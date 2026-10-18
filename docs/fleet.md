@@ -153,8 +153,12 @@ change; a `device_id` is a name or a MAC.
 | `stackchan_lock` | `device_id` optional; the whole fleet when omitted |
 | `stackchan_reply` | unchanged; follows `request_id` to the device that asked |
 
-Without `device_id`, `stackchan_say` and `stackchan_photo` go to the default device
-(`GROK_DEVICE_ID`) only if it is approved; otherwise the answer is "unknown device".
+Without `device_id`, `stackchan_say` and `stackchan_photo` go to `GROK_DEVICE_ID` when
+that device is approved. When `GROK_DEVICE_ID` is unset they go to the only approved
+device, and the answer is "unknown device" if there are several or none. A
+`stackchan_reply` for an unknown request with no `device_id` follows the same default,
+and is refused (`unknown request and no default device`) when there is none: it is not
+queued.
 
 **Admin: `/fleet/mcp`** (Bearer `FLEET_ADMIN_TOKEN`, another AI, or `scripts/fleet.sh`).
 From the command line, one tool per call, arguments as a JSON object:

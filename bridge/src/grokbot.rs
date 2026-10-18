@@ -10,9 +10,12 @@
 //!   and spoken at the start of the next conversation.
 //!
 //! Only approved devices of the fleet may ask; devices are named by name or MAC;
-//! the budgets are global (the device-id header is client input), and a reply
-//! whose request is unknown (restart, expiry) goes to the default device
-//! (`GROK_DEVICE_ID`) instead of being dropped.
+//! the budgets are global (the device-id header is client input). A reply whose
+//! request is unknown (restart, expiry) goes to `GROK_DEVICE_ID` when that is
+//! set, or to the only approved device when it is not. With no such device the
+//! call is an error: nothing is queued under a name no robot will ever read.
+//! If `stackchan_reply` does not arrive within `reply_timeout`, the robot says
+//! that Grok Bot did not answer (`claim_silence`).
 //!
 //! `handle` is plain data in and out, so the HTTP layer stays thin and the
 //! behaviour is tested without a server.
@@ -39,6 +42,9 @@ const REQUEST_TTL_S: f64 = 3600.0;
 const PUSH_PER_HOUR: usize = 30;
 /// The camera can be triggered from afar: keep it rare.
 const PHOTOS_PER_HOUR: usize = 20;
+/// How long the robot waits for `stackchan_reply` before it says Grok Bot
+/// did not answer. `GROK_BOT_REPLY_TIMEOUT` overrides it (seconds).
+pub const DEFAULT_REPLY_TIMEOUT_SECS: u64 = 180;
 
 /// What the text is, for the live session.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,6 +72,9 @@ pub struct Config {
     pub default_device: String,
     pub pending_path: PathBuf,
     pub rate_per_hour: usize,
+    /// Wait for `stackchan_reply` this long, then have the robot say Grok Bot
+    /// did not answer.
+    pub reply_timeout: Duration,
 }
 
 pub struct GrokBot {
@@ -75,6 +84,7 @@ pub struct GrokBot {
     default_device: String,
     pending_path: PathBuf,
     rate_per_hour: usize,
+    reply_timeout: Duration,
     clock: Clock,
     poster: Poster,
     speaker: Mutex<Option<Arc<dyn Speaker>>>,
@@ -82,9 +92,16 @@ pub struct GrokBot {
     session_id: String,
 }
 
+struct Pending {
+    device: String,
+    at: f64,
+    /// The robot was already told that this request got no answer.
+    silence_announced: bool,
+}
+
 #[derive(Default)]
 struct State {
-    requests: HashMap<String, (String, f64)>,
+    requests: HashMap<String, Pending>,
     calls: VecDeque<f64>,
     pushes: VecDeque<f64>,
     photos: VecDeque<f64>,
@@ -140,6 +157,7 @@ impl GrokBot {
             default_device: config.default_device.trim().to_lowercase(),
             pending_path: config.pending_path,
             rate_per_hour: config.rate_per_hour,
+            reply_timeout: config.reply_timeout,
             clock: clock.unwrap_or_else(|| Arc::new(unix_now)),
             poster,
             speaker: Mutex::new(None),
@@ -156,17 +174,53 @@ impl GrokBot {
         !self.webhook_url.is_empty()
     }
 
-    /// The MAC of an approved device named `reference` (name or MAC); the
-    /// default device when empty.
+    pub fn reply_timeout(&self) -> Duration {
+        self.reply_timeout
+    }
+
+    /// The MAC of an approved device named `reference` (name or MAC). An empty
+    /// reference is the default device: `GROK_DEVICE_ID` when it is approved,
+    /// or the only approved device when `GROK_DEVICE_ID` is unset.
     pub fn resolve(&self, reference: &str) -> Result<String, &'static str> {
         let reference = reference.trim();
         if reference.is_empty() {
-            return if self.fleet.is_approved(&self.default_device) { Ok(self.default_device.clone()) } else { Err("unknown device") };
+            return self.approved_default().ok_or("unknown device");
         }
         match self.fleet.find(reference) {
             Some((mac, device)) if device.status == Status::Approved => Ok(mac),
             _ => Err("unknown device"),
         }
+    }
+
+    /// Where a reply goes when it names no device. `GROK_DEVICE_ID` when set
+    /// (a forgotten request still has somewhere to wait, even if that device
+    /// is not approved right now). Otherwise the only approved device.
+    fn fallback_device(&self) -> Option<String> {
+        if !self.default_device.is_empty() {
+            return Some(self.default_device.clone());
+        }
+        self.sole_approved()
+    }
+
+    fn approved_default(&self) -> Option<String> {
+        if !self.default_device.is_empty() {
+            return self.fleet.is_approved(&self.default_device).then(|| self.default_device.clone());
+        }
+        self.sole_approved()
+    }
+
+    fn sole_approved(&self) -> Option<String> {
+        let mut found = None;
+        for (mac, device, _) in self.fleet.entries() {
+            if device.status != Status::Approved {
+                continue;
+            }
+            if found.is_some() {
+                return None;
+            }
+            found = Some(mac);
+        }
+        found
     }
 
     /// The approved devices, for `stackchan_devices`.
@@ -219,10 +273,23 @@ impl GrokBot {
     pub fn remember(&self, request_id: &str, device_id: &str) {
         let now = (self.clock)();
         let mut state = self.state.lock().unwrap();
-        state.requests.retain(|_, (_, at)| now - *at <= REQUEST_TTL_S);
-        state
-            .requests
-            .insert(request_id.to_string(), (device_id.to_string(), now));
+        state.requests.retain(|_, pending| now - pending.at <= REQUEST_TTL_S);
+        state.requests.insert(
+            request_id.to_string(),
+            Pending { device: device_id.to_string(), at: now, silence_announced: false },
+        );
+    }
+
+    /// True the first time `request_id` is still waiting, so the robot says
+    /// Grok Bot did not answer. A reply that arrives later is still delivered.
+    pub fn claim_silence(&self, request_id: &str) -> bool {
+        let mut state = self.state.lock().unwrap();
+        let Some(pending) = state.requests.get_mut(request_id) else { return false };
+        if pending.silence_announced {
+            return false;
+        }
+        pending.silence_announced = true;
+        true
     }
 
     pub fn forget(&self, request_id: &str) {
@@ -243,28 +310,28 @@ impl GrokBot {
     }
 
     /// Speak now if a conversation can take it, else queue it.
-    /// Returns "empty", "spoken", or "queued".
-    pub fn accept(&self, request_id: Option<&str>, text: &str, device_id: Option<&str>, kind: Kind) -> &'static str {
+    /// Ok is "empty", "spoken", or "queued". Err when a reply names no device
+    /// and there is no default (nothing would ever read a queued text).
+    pub fn accept(&self, request_id: Option<&str>, text: &str, device_id: Option<&str>, kind: Kind) -> Result<&'static str, &'static str> {
         let cleaned = clean_speech(text);
         if cleaned.is_empty() {
-            return "empty";
+            return Ok("empty");
         }
         let known = request_id.and_then(|id| self.state.lock().unwrap().requests.remove(id));
-        let target = device_id
-            .filter(|d| !d.is_empty())
-            .map(str::to_string)
-            .or(known.map(|(device, _)| device))
-            .filter(|d| !d.is_empty() && d != "unknown")
-            .unwrap_or_else(|| {
-                if self.default_device.is_empty() { "unknown".into() } else { self.default_device.clone() }
-            });
+        let explicit = device_id.map(str::trim).filter(|d| !d.is_empty()).map(str::to_string);
+        let from_request = known.and_then(|pending| {
+            if pending.device.is_empty() || pending.device == "unknown" { None } else { Some(pending.device) }
+        });
+        let Some(target) = explicit.or(from_request).or_else(|| self.fallback_device()) else {
+            return Err("unknown request and no default device");
+        };
         let speaker = self.speaker.lock().unwrap().clone();
         if let Some(speaker) = speaker
             && speaker.speak(&target, request_id, &cleaned, kind) {
-                return "spoken";
+                return Ok("spoken");
             }
         self.enqueue(&target, &cleaned);
-        "queued"
+        Ok("queued")
     }
 
     /// Pending texts for this device, consumed once.
@@ -415,8 +482,10 @@ impl GrokBot {
                 Err(_) => return json_response(400, json!({"error": "unknown device"}), vec![]),
             }
         }
-        let state = self.accept(Some(&request_id), &text, Some(&device_id), Kind::Reply);
-        json_response(200, json!({"ok": true, "delivery": state}), vec![])
+        match self.accept(Some(&request_id), &text, Some(&device_id), Kind::Reply) {
+            Ok(state) => json_response(200, json!({"ok": true, "delivery": state}), vec![]),
+            Err(reason) => json_response(400, json!({"error": reason}), vec![]),
+        }
     }
 
     fn mcp(&self, body: &[u8], mcp_session: Option<&str>) -> Response {
@@ -453,7 +522,10 @@ impl GrokBot {
                 if request_id.is_empty() || text.is_empty() {
                     return tool_result("request_id and text are required", true);
                 }
-                tool_result(self.accept(Some(&request_id), &text, Some(&device_id), Kind::Reply), false)
+                match self.accept(Some(&request_id), &text, Some(&device_id), Kind::Reply) {
+                    Ok(state) => tool_result(state, false),
+                    Err(reason) => tool_result(reason, true),
+                }
             }
             "stackchan_say" => {
                 if text.is_empty() {
@@ -466,7 +538,10 @@ impl GrokBot {
                 if !self.allow_push() {
                     return tool_result("rate limited: at most 30 messages an hour", true);
                 }
-                tool_result(self.accept(None, &text, Some(&target), Kind::Push), false)
+                match self.accept(None, &text, Some(&target), Kind::Push) {
+                    Ok(state) => tool_result(state, false),
+                    Err(reason) => tool_result(reason, true),
+                }
             }
             "stackchan_devices" => tool_result(&self.devices(), false),
             // Run by the HTTP layer (host_call); only reached without it.
@@ -628,6 +703,7 @@ mod tests {
                 default_device: "02:00:00:00:00:01".into(),
                 pending_path: dir.path().join("pending.json"),
                 rate_per_hour: 10,
+                reply_timeout: Duration::from_secs(DEFAULT_REPLY_TIMEOUT_SECS),
             },
             Some(Arc::new(move || clock_now.load(Ordering::SeqCst) as f64)),
             Some(Arc::new(move |_url, payload| {
@@ -753,8 +829,13 @@ mod tests {
     #[test]
     fn unknown_request_goes_to_the_default_device() {
         let f = fixture();
-        assert_eq!(f.bot.accept(Some("asleep"), "after restart", None, Kind::Reply), "queued");
+        assert_eq!(f.bot.accept(Some("asleep"), "after restart", None, Kind::Reply), Ok("queued"));
         assert_eq!(f.bot.take_pending(MAC), vec!["after restart"]);
+        // A configured default still wins when several devices are approved.
+        f.fleet.authenticate("11:22:33:44:55:66", "boot");
+        f.fleet.approve("11:22:33:44:55:66", "kitchen").unwrap();
+        assert_eq!(f.bot.accept(Some("asleep"), "and another", None, Kind::Reply), Ok("queued"));
+        assert_eq!(f.bot.take_pending(MAC), vec!["and another"]);
     }
 
     #[test]
@@ -780,7 +861,7 @@ mod tests {
     }
 
     #[test]
-    fn without_a_default_device_a_call_must_name_one() {
+    fn without_a_configured_default_the_only_approved_device_is_used() {
         let f = fixture();
         let bot = GrokBot::new(
             Config {
@@ -791,12 +872,16 @@ mod tests {
                 default_device: String::new(),
                 pending_path: f._dir.path().join("other.json"),
                 rate_per_hour: 10,
+                reply_timeout: Duration::from_secs(DEFAULT_REPLY_TIMEOUT_SECS),
             },
             None,
             None,
         );
-        assert_eq!(bot.resolve(""), Err("unknown device"));
+        assert_eq!(bot.resolve("").as_deref(), Ok(MAC));
         assert_eq!(bot.resolve("stackchan").as_deref(), Ok(MAC));
+        f.fleet.authenticate("11:22:33:44:55:66", "boot");
+        f.fleet.approve("11:22:33:44:55:66", "kitchen").unwrap();
+        assert_eq!(bot.resolve(""), Err("unknown device"));
     }
 
     #[test]
@@ -941,7 +1026,7 @@ mod tests {
     fn pending_keeps_the_last_five() {
         let f = fixture();
         for i in 0..7 {
-            f.bot.accept(None, &format!("m{i}"), Some("asleep-device"), Kind::Push);
+            assert!(f.bot.accept(None, &format!("m{i}"), Some("asleep-device"), Kind::Push).is_ok());
         }
         assert_eq!(f.bot.take_pending("asleep-device"), vec!["m2", "m3", "m4", "m5", "m6"]);
     }
@@ -966,6 +1051,7 @@ mod tests {
                     default_device: MAC.into(),
                     pending_path: f._dir.path().join("other.json"),
                     rate_per_hour: 10,
+                    reply_timeout: Duration::from_secs(DEFAULT_REPLY_TIMEOUT_SECS),
                 },
                 None,
                 Some(Arc::new(|url: String, _payload| {
@@ -986,5 +1072,110 @@ mod tests {
     fn speech_is_cleaned_and_bounded() {
         assert_eq!(clean_speech("  **Bonjour**\n`toi` # "), "Bonjour toi");
         assert_eq!(clean_speech(&"é".repeat(600)).chars().count(), 500);
+    }
+
+    /// A bot with no `GROK_DEVICE_ID`, on the fixture's fleet.
+    fn bot_without_default(f: &Fixture) -> GrokBot {
+        let bot = GrokBot::new(
+            Config {
+                token: "secret-token".into(),
+                fleet: f.fleet.clone(),
+                webhook_url: "https://example.invalid/hook".into(),
+                webhook_token: String::new(),
+                default_device: String::new(),
+                pending_path: f._dir.path().join("no-default.json"),
+                rate_per_hour: 10,
+                reply_timeout: Duration::from_secs(DEFAULT_REPLY_TIMEOUT_SECS),
+            },
+            None,
+            None,
+        );
+        bot.set_speaker(f.recorder.clone());
+        bot
+    }
+
+    #[test]
+    fn an_unset_default_uses_the_only_approved_device() {
+        let f = fixture();
+        let bot = bot_without_default(&f);
+        assert_eq!(bot.resolve("").as_deref(), Ok(MAC));
+        let response = bot.handle(
+            "POST",
+            "/grok/callback",
+            AUTH,
+            None,
+            br#"{"request_id":"no-such","text":"hello from nowhere"}"#,
+        );
+        let body: Value = serde_json::from_slice(&response.body).unwrap();
+        assert_eq!(response.status, 200);
+        assert_eq!(body["delivery"], "spoken");
+        assert_eq!(
+            *f.recorder.spoken.lock().unwrap(),
+            vec![(MAC.to_string(), "hello from nowhere".to_string(), Kind::Reply)]
+        );
+        assert!(bot.take_pending("unknown").is_empty());
+        // A push with no device_id uses that same device (Kind::Push is queued
+        // by the test speaker).
+        let (_, body) = mcp(
+            &bot,
+            json!({"jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                   "params": {"name": "stackchan_say", "arguments": {"text": "Bonjour."}}}),
+        );
+        assert_eq!(body["result"]["isError"], false);
+        assert_eq!(bot.take_pending(MAC), vec!["Bonjour."]);
+    }
+
+    #[test]
+    fn a_reply_nobody_will_hear_is_an_error() {
+        let f = fixture();
+        let bot = bot_without_default(&f);
+        f.fleet.authenticate("11:22:33:44:55:66", "boot");
+        f.fleet.approve("11:22:33:44:55:66", "kitchen").unwrap();
+        assert_eq!(bot.resolve(""), Err("unknown device"));
+        let response = bot.handle(
+            "POST",
+            "/grok/callback",
+            AUTH,
+            None,
+            br#"{"request_id":"no-such","text":"hello from nowhere"}"#,
+        );
+        let body: Value = serde_json::from_slice(&response.body).unwrap();
+        assert_eq!(response.status, 400);
+        assert_eq!(body["error"], "unknown request and no default device");
+        assert!(f.recorder.spoken.lock().unwrap().is_empty());
+        assert!(bot.take_pending("unknown").is_empty());
+        assert!(bot.take_pending(MAC).is_empty());
+        let (_, mcp_body) = mcp(
+            &bot,
+            json!({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
+                   "params": {"name": "stackchan_reply", "arguments": {"request_id": "also-unknown", "text": "hi"}}}),
+        );
+        assert_eq!(mcp_body["result"]["isError"], true);
+        assert_eq!(mcp_body["result"]["content"][0]["text"], "unknown request and no default device");
+    }
+
+    #[test]
+    fn a_known_request_does_not_need_a_default_device() {
+        let f = fixture();
+        let bot = bot_without_default(&f);
+        f.fleet.authenticate("11:22:33:44:55:66", "boot");
+        f.fleet.approve("11:22:33:44:55:66", "kitchen").unwrap();
+        bot.remember("req-1", MAC);
+        assert_eq!(bot.accept(Some("req-1"), "pong", None, Kind::Reply), Ok("spoken"));
+        assert_eq!(*f.recorder.spoken.lock().unwrap(), vec![(MAC.to_string(), "pong".to_string(), Kind::Reply)]);
+    }
+
+    #[test]
+    fn silence_is_announced_once_and_a_late_reply_still_lands() {
+        let f = fixture();
+        f.bot.remember("req", "device-a");
+        assert!(f.bot.claim_silence("req"));
+        assert!(!f.bot.claim_silence("req"));
+        assert_eq!(f.bot.accept(Some("req"), "late but welcome", None, Kind::Reply), Ok("spoken"));
+        assert!(!f.bot.claim_silence("req"));
+        assert_eq!(*f.recorder.spoken.lock().unwrap(), vec![("device-a".to_string(), "late but welcome".to_string(), Kind::Reply)]);
+        f.bot.remember("gone", MAC);
+        f.bot.forget("gone");
+        assert!(!f.bot.claim_silence("gone"));
     }
 }

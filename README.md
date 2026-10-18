@@ -1,17 +1,22 @@
-# botstack
+# my-botstack
 
-botstack turns the M5Stack StackChan robot, and a round-screen ESP32-P4 board, into voice
-assistants that talk with xAI's Grok realtime voice and hand the rest to **Grok Bot**,
-xAI's cloud agent with your accounts, mail and calendar: it started as a way to ask Grok
-Bot things from the desk, out loud. It is a complete stack you host
-yourself: an ESP-IDF firmware with an animated face (bloub), and a small Rust bridge that
-runs on your server behind Caddy, keeps the devices' always-on link, shapes the voice for
-their small speakers, runs their tools (face, head, camera), and lets an AI manage the
-fleet over MCP. No cloud service is in the path but xAI's (the realtime voice and Grok
-Bot). The bridge must be reachable from the internet: your devices and Grok Bot both call
-it.
+> **TODO(owner):** add a photo or a 10-second GIF of the robot answering out loud
+> (for example, “what's on my calendar?”). Use the same file for the X post and for
+> the repository social preview. Suggested path: `docs/img/robot-answering.gif`.
+> Replace this note with
+> `![The robot answering](docs/img/robot-answering.gif)`.
 
-**Start here: [QUICKSTART.md](QUICKSTART.md)**, from an empty server to a talking robot.
+A StackChan robot, or a round Waveshare screen, that you host yourself and talk to.
+
+- Tap it and talk: it answers with xAI's realtime voice and an animated face.
+- Mail, calendar and files go to a [Grok Bot](https://docs.x.ai/grok-bot/skills-routines-and-automations) routine; the robot reads the answer aloud.
+- The firmware is ESP-IDF. The bridge is a small Rust server you run behind Caddy.
+
+This repository is **my-botstack**. The bridge, the firmware and the device protocol are named botstack (`botstack-bridge`, `botstack/v1`). The [quickstart](QUICKSTART.md) clones the repository into a directory named `botstack/`.
+
+xAI is the only outside service in the path: the realtime voice, text to speech, vision, and Grok Bot. The bridge has to be reachable from the internet: the devices and Grok Bot both call it. It keeps their always-on link, shapes the voice for the small speakers, runs the tools (face, head, camera) and lets an AI manage the fleet over MCP.
+
+**Start here: [QUICKSTART.md](QUICKSTART.md)**, from an empty server to a talking robot. Count about an hour, most of it waiting for builds.
 
 ![Who talks to whom](docs/img/architecture.svg)
 
@@ -73,6 +78,8 @@ it.
 - **xAI costs money.** The realtime voice is billed per minute of conversation (about
   $0.08 per minute at the time of writing; check xAI's pricing), plus text to speech and
   vision. `MAX_CONVERSATIONS` caps simultaneous sessions; `/metrics` counts the seconds.
+  Each question handed to Grok Bot also starts one routine run and uses your Grok Bot
+  plan's usage (at most 10 questions an hour).
 - **Espressif's esp-sr** (echo cancellation, voice detection) comes with its own licence,
   which restricts the use of the esp-sr library and its models to Espressif chips.
 - The StackChan needs its stock firmware once, to join your Wi-Fi: botstack reads the
@@ -80,7 +87,6 @@ it.
 
 ## Roadmap
 
-- Tests of the link in CI (a `fake_robot` run against the bridge).
 - Session resumption across short disconnects.
 - Wi-Fi provisioning without the stock StackChan firmware.
 

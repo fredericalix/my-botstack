@@ -9,7 +9,7 @@ Four parts; botstack is the first two:
 | **Devices** | on your desk: the StackChan robot (M5Stack CoreS3, ESP32-S3) or the Waveshare ESP32-P4 board | Shows the bloub face, listens, plays Grok's voice; the StackChan also moves its head and takes photos. Runs the botstack firmware. |
 | **botstack-bridge** | one container on your server, behind Caddy (Docker Compose) | Speaks the devices' protocol on one side and xAI's realtime API on the other. Shapes the voice for the small speaker, runs the robot's tools, keeps the fleet of devices, receives Grok Bot's answers. |
 | **xAI** | cloud | Realtime voice model, text to speech, and a vision model. |
-| **Grok Bot** (optional) | anywhere | Any agent of yours that receives a webhook and answers through MCP: a slower agent that can read, say, your mail and calendar. |
+| **Grok Bot** (recommended) | in the cloud | The usual peer: a routine receives the webhook and calls MCP. Any other agent that can do those two things can take its place. It can read, for example, your mail and calendar. |
 
 ## Which model answers you?
 

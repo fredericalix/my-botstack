@@ -47,6 +47,36 @@ fn public_base(public: &str, domain: &str) -> String {
     if domain.is_empty() { String::new() } else { format!("https://{domain}") }
 }
 
+/// `GROK_BOT_WEBHOOK_ALLOW_HTTP`: `1`, `true` or `yes`. Anything else is off,
+/// so a typo does not send the webhook key in clear.
+fn env_flag(name: &str) -> bool {
+    matches!(env(name, "").trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes")
+}
+
+/// `GROK_BOT_WEBHOOK_URL`. Empty means Grok Bot is off. `https://` is the
+/// only scheme that keeps `GROK_BOT_WEBHOOK_TOKEN` off the wire in clear;
+/// `http://` is refused unless `allow_http` is set, for a local bridge.
+fn webhook_url(raw: &str, allow_http: bool) -> anyhow::Result<String> {
+    let url = raw.trim();
+    if url.is_empty() {
+        return Ok(String::new());
+    }
+    let scheme = url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("");
+    if scheme.eq_ignore_ascii_case("https") {
+        return Ok(url.to_string());
+    }
+    if scheme.eq_ignore_ascii_case("http") {
+        if allow_http {
+            return Ok(url.to_string());
+        }
+        bail!(
+            "GROK_BOT_WEBHOOK_URL must use https:// (the webhook key would travel in clear over http://). \
+             Set GROK_BOT_WEBHOOK_ALLOW_HTTP=1 only for local development."
+        );
+    }
+    bail!("GROK_BOT_WEBHOOK_URL must be an https:// URL")
+}
+
 /// `KEYTERMS`: a comma-separated list; blanks are dropped.
 fn keyterms(raw: &str) -> Vec<String> {
     raw.split(',').map(str::trim).filter(|term| !term.is_empty()).map(str::to_string).collect()
@@ -132,7 +162,18 @@ async fn serve() -> anyhow::Result<()> {
     let device = env("GROK_DEVICE_ID", "").trim().to_lowercase();
     let api_key = env("XAI_API_KEY", "");
     let token = env("GROK_BRIDGE_TOKEN", "");
-    let webhook_url = env("GROK_BOT_WEBHOOK_URL", "");
+    let allow_insecure_webhook = env_flag("GROK_BOT_WEBHOOK_ALLOW_HTTP");
+    let webhook_url = webhook_url(&env("GROK_BOT_WEBHOOK_URL", ""), allow_insecure_webhook)?;
+    let default_reply_timeout = grokbot::DEFAULT_REPLY_TIMEOUT_SECS.to_string();
+    let reply_timeout_s: u64 = env("GROK_BOT_REPLY_TIMEOUT", &default_reply_timeout)
+        .parse()
+        .context("GROK_BOT_REPLY_TIMEOUT")?;
+    if reply_timeout_s == 0 {
+        bail!("GROK_BOT_REPLY_TIMEOUT must be at least 1 second");
+    }
+    if webhook_url.to_ascii_lowercase().starts_with("http://") {
+        warn!("GROK_BOT_WEBHOOK_URL is http://; the webhook key travels in clear. Use this only for local development.");
+    }
     let data = std::path::PathBuf::from(env("DATA_DIR", "/data"));
     let robot_token = env("ROBOT_TOKEN", "");
     let admin_token = env("FLEET_ADMIN_TOKEN", "");
@@ -169,7 +210,8 @@ async fn serve() -> anyhow::Result<()> {
         bootstrap_key = robot_token.len(),
         fleet_admin_token = !admin_token.is_empty(),
         webhook = !webhook_url.is_empty(),
-        webhook_https = webhook_url.starts_with("https://"),
+        webhook_https = webhook_url.to_ascii_lowercase().starts_with("https://"),
+        grok_reply_timeout_s = reply_timeout_s,
         devices = fleet.entries().len(),
         default_device = !device.is_empty(),
         max_conversations,
@@ -201,6 +243,7 @@ async fn serve() -> anyhow::Result<()> {
             default_device: device,
             pending_path: data.join("grok_pending.json"),
             rate_per_hour: 10,
+            reply_timeout: Duration::from_secs(reply_timeout_s),
         },
         None,
         None,
@@ -291,6 +334,19 @@ mod tests {
         assert!(seed("  ", "stackchan", || true).is_none());
         let seed = seed("02:00:00:00:00:01", "desk", || true).unwrap();
         assert_eq!((seed.mac.as_str(), seed.name.as_str(), seed.locked), ("02:00:00:00:00:01", "desk", true));
+    }
+
+    #[test]
+    fn an_http_webhook_is_refused_unless_local_development_opts_in() {
+        assert_eq!(webhook_url("", false).unwrap(), "");
+        assert_eq!(webhook_url("  ", true).unwrap(), "");
+        assert_eq!(webhook_url(" https://bot.example/hook ", false).unwrap(), "https://bot.example/hook");
+        assert!(webhook_url("HTTPS://bot.example/hook", false).is_ok());
+        let refused = webhook_url("http://bot.example/hook", false).unwrap_err().to_string();
+        assert!(refused.contains("https://") && refused.contains("GROK_BOT_WEBHOOK_ALLOW_HTTP"), "{refused}");
+        assert!(webhook_url("http://127.0.0.1:9/hook", false).is_err());
+        assert_eq!(webhook_url("http://127.0.0.1:9/hook", true).unwrap(), "http://127.0.0.1:9/hook");
+        assert!(webhook_url("ftp://bot.example/hook", true).is_err());
     }
 
     #[test]

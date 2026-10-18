@@ -194,6 +194,7 @@ pub(crate) mod testing {
                 default_device: MAC.into(),
                 pending_path: dir.join("pending.json"),
                 rate_per_hour: 10,
+                reply_timeout: Duration::from_secs(grokbot::DEFAULT_REPLY_TIMEOUT_SECS),
                 fleet: fleet.clone(),
             },
             None,
