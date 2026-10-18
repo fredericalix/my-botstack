@@ -18,7 +18,7 @@ Only the latest commit on the main branch is supported.
 | `XAI_API_KEY` | `.env` | xAI's API, on your bill |
 | `FLEET_ADMIN_TOKEN` | `.env` | `/fleet/mcp`: approve, lock, revoke and rename devices, make them speak |
 | `GROK_BRIDGE_TOKEN` | `.env` | `/grok/mcp`: make the devices speak, take photos with their cameras, lock them |
-| `GROK_BOT_WEBHOOK_URL`, `GROK_BOT_WEBHOOK_TOKEN` | `.env` | your agent's webhook |
+| `GROK_BOT_WEBHOOK_URL`, `GROK_BOT_WEBHOOK_TOKEN` | `.env` | your Grok Bot routine's webhook. The token is required for that routine. An `http://` URL is refused unless `GROK_BOT_WEBHOOK_ALLOW_HTTP` is `1`, `true`, or `yes` |
 | `ROBOT_TOKEN` and `firmware/robot-token` | `.env`, the computer that builds the firmware, and every firmware image | the bootstrap key: lets a new device introduce itself as `pending`, nothing more until you approve it |
 | `firmware/signing-key.pem` | the computer that builds the firmware (gitignored, mode 600) | signs every firmware; devices install only updates signed with it |
 | `firmware-p4/wifi.txt` | the computer that flashes the P4 board (gitignored) | your Wi-Fi passwords |

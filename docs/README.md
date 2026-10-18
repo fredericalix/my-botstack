@@ -15,7 +15,7 @@ explain how the pieces fit, with one picture each.
 | [botstack/v1 protocol](protocol.md) | The messages between the robot and the bridge |
 | [Audio](audio.md) | How your voice reaches Grok and how Grok's voice reaches the speaker |
 | [Fleet](fleet.md) | Devices, their keys and approval, abilities, the conversation cap, health and the admin MCP |
-| [Grok Bot](grok-bot.md) | Questions for the slow agent, its replies, pushed messages, photos and the lock |
+| [Grok Bot](grok-bot.md) | Questions handed to Grok Bot, its replies, pushed messages, photos and the lock |
 | [Security](security.md) | The device keys, the tokens, signed updates, the limits and the lock |
 | [Robot tools](robot-tools.md) | Face, head, camera and goodbye, driven by Grok |
 | [The bloub face](face.md) | The face model, its 16 expressions and its animations |

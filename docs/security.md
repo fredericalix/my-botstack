@@ -10,7 +10,7 @@ The bridge's public doors are all behind Caddy (HTTPS); each checks its own cred
 | `/botstack/v1/firmware` | a device | the same authentication as the link | 401, 403, 429, 503 |
 | `/mcp/vision/explain` | a device | Bearer vision token, random per bridge process and handed over in the `hello` to approved devices only (a pending device gets none; one approved while connected gets a second `hello` with it); the `Device-Id` must be an approved device with a camera; the robot posts only to an HTTPS URL | 401 |
 | `/grok/mcp` | Grok Bot | Bearer `GROK_BRIDGE_TOKEN` (constant time) | 401 |
-| `POST /grok/callback` | Grok Bot (without MCP) | Bearer `GROK_BRIDGE_TOKEN` (constant time); the reply's `device_id`, when given, must be an approved device | 401, 400 (unknown device, bad JSON) |
+| `POST /grok/callback` | Grok Bot (without MCP) | Bearer `GROK_BRIDGE_TOKEN` (constant time); the reply's `device_id`, when given, must be an approved device; a reply with no device and no default is refused | 401, 400 (unknown device, no default device, bad JSON) |
 | `GET /grok/health` | anyone | nothing: it answers `{"ok":true}` and reveals nothing else | none |
 | `/fleet/mcp` | admin AI | Bearer `FLEET_ADMIN_TOKEN` (constant time); five wrong tokens in a minute from one client address block that address for a minute | 503 (not set), 401, 429 |
 
@@ -100,7 +100,9 @@ down`). `RUST_LOG=warn` in `.env` keeps the transcripts out.
 Never print a key, a token or the webhook URL; report only whether it is set and its
 length. On the server they live in `.env` (gitignored, mode 600, written by
 `scripts/setup.sh`): `XAI_API_KEY`, `ROBOT_TOKEN` (the bootstrap key), `FLEET_ADMIN_TOKEN`,
-`GROK_BRIDGE_TOKEN`, `GROK_BOT_WEBHOOK_URL`, `GROK_BOT_WEBHOOK_TOKEN`. `.dockerignore`
+`GROK_BRIDGE_TOKEN`, `GROK_BOT_WEBHOOK_URL`, `GROK_BOT_WEBHOOK_TOKEN`. The bridge refuses
+an `http://` webhook URL unless `GROK_BOT_WEBHOOK_ALLOW_HTTP` is `1`, `true`, or `yes`, so the webhook key is
+not sent in clear by mistake. `.dockerignore`
 keeps `.env` (and `.env.*`) out of the image's build context; compose hands the values to
 the bridge as its environment.
 

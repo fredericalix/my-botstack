@@ -47,6 +47,54 @@ fn public_base(public: &str, domain: &str) -> String {
     if domain.is_empty() { String::new() } else { format!("https://{domain}") }
 }
 
+/// `GROK_BOT_WEBHOOK_ALLOW_HTTP`: `1`, `true` or `yes`. Anything else is off,
+/// so a typo does not send the webhook key in clear.
+fn env_flag(name: &str) -> bool {
+    flag_on(&env(name, ""))
+}
+
+fn flag_on(value: &str) -> bool {
+    matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes")
+}
+
+/// Seconds to wait for `stackchan_reply`. From 1 to
+/// `grokbot::MAX_REPLY_TIMEOUT_SECS`: a request is kept for one hour, and a
+/// longer wait would fire after the request is gone.
+fn reply_timeout(raw: &str) -> anyhow::Result<u64> {
+    let seconds: u64 = raw.trim().parse().context("GROK_BOT_REPLY_TIMEOUT")?;
+    if seconds == 0 || seconds > grokbot::MAX_REPLY_TIMEOUT_SECS {
+        bail!(
+            "GROK_BOT_REPLY_TIMEOUT must be from 1 to {} seconds; a Grok Bot request is kept for one hour, and a longer wait would never be spoken",
+            grokbot::MAX_REPLY_TIMEOUT_SECS
+        );
+    }
+    Ok(seconds)
+}
+
+/// `GROK_BOT_WEBHOOK_URL`. Empty means Grok Bot is off. `https://` is the
+/// only scheme that keeps `GROK_BOT_WEBHOOK_TOKEN` off the wire in clear;
+/// `http://` is refused unless `allow_http` is set, for a local bridge.
+fn webhook_url(raw: &str, allow_http: bool) -> anyhow::Result<String> {
+    let url = raw.trim();
+    if url.is_empty() {
+        return Ok(String::new());
+    }
+    let scheme = url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("");
+    if scheme.eq_ignore_ascii_case("https") {
+        return Ok(url.to_string());
+    }
+    if scheme.eq_ignore_ascii_case("http") {
+        if allow_http {
+            return Ok(url.to_string());
+        }
+        bail!(
+            "GROK_BOT_WEBHOOK_URL must use https:// (the webhook key would travel in clear over http://). \
+             Set GROK_BOT_WEBHOOK_ALLOW_HTTP to 1, true, or yes only for local development."
+        );
+    }
+    bail!("GROK_BOT_WEBHOOK_URL must be an https:// URL")
+}
+
 /// `KEYTERMS`: a comma-separated list; blanks are dropped.
 fn keyterms(raw: &str) -> Vec<String> {
     raw.split(',').map(str::trim).filter(|term| !term.is_empty()).map(str::to_string).collect()
@@ -132,7 +180,19 @@ async fn serve() -> anyhow::Result<()> {
     let device = env("GROK_DEVICE_ID", "").trim().to_lowercase();
     let api_key = env("XAI_API_KEY", "");
     let token = env("GROK_BRIDGE_TOKEN", "");
-    let webhook_url = env("GROK_BOT_WEBHOOK_URL", "");
+    let allow_insecure_webhook = env_flag("GROK_BOT_WEBHOOK_ALLOW_HTTP");
+    let webhook_url = webhook_url(&env("GROK_BOT_WEBHOOK_URL", ""), allow_insecure_webhook)?;
+    let webhook_token = env("GROK_BOT_WEBHOOK_TOKEN", "");
+    let reply_timeout_s = reply_timeout(&env(
+        "GROK_BOT_REPLY_TIMEOUT",
+        &grokbot::DEFAULT_REPLY_TIMEOUT_SECS.to_string(),
+    ))?;
+    if webhook_url.to_ascii_lowercase().starts_with("http://") {
+        warn!("GROK_BOT_WEBHOOK_URL is http://; the webhook key travels in clear. Use this only for local development.");
+    }
+    if !webhook_url.is_empty() && webhook_token.is_empty() {
+        warn!("GROK_BOT_WEBHOOK_URL is set but GROK_BOT_WEBHOOK_TOKEN is empty: a Grok Bot routine rejects the post without its key");
+    }
     let data = std::path::PathBuf::from(env("DATA_DIR", "/data"));
     let robot_token = env("ROBOT_TOKEN", "");
     let admin_token = env("FLEET_ADMIN_TOKEN", "");
@@ -169,7 +229,9 @@ async fn serve() -> anyhow::Result<()> {
         bootstrap_key = robot_token.len(),
         fleet_admin_token = !admin_token.is_empty(),
         webhook = !webhook_url.is_empty(),
-        webhook_https = webhook_url.starts_with("https://"),
+        webhook_https = webhook_url.to_ascii_lowercase().starts_with("https://"),
+        webhook_token = !webhook_token.is_empty(),
+        grok_reply_timeout_s = reply_timeout_s,
         devices = fleet.entries().len(),
         default_device = !device.is_empty(),
         max_conversations,
@@ -196,11 +258,12 @@ async fn serve() -> anyhow::Result<()> {
         grokbot::Config {
             token,
             webhook_url,
-            webhook_token: env("GROK_BOT_WEBHOOK_TOKEN", ""),
+            webhook_token,
             fleet: fleet.clone(),
             default_device: device,
             pending_path: data.join("grok_pending.json"),
             rate_per_hour: 10,
+            reply_timeout: Duration::from_secs(reply_timeout_s),
         },
         None,
         None,
@@ -291,6 +354,39 @@ mod tests {
         assert!(seed("  ", "stackchan", || true).is_none());
         let seed = seed("02:00:00:00:00:01", "desk", || true).unwrap();
         assert_eq!((seed.mac.as_str(), seed.name.as_str(), seed.locked), ("02:00:00:00:00:01", "desk", true));
+    }
+
+    #[test]
+    fn an_http_webhook_is_refused_unless_local_development_opts_in() {
+        assert_eq!(webhook_url("", false).unwrap(), "");
+        assert_eq!(webhook_url("  ", true).unwrap(), "");
+        assert_eq!(webhook_url(" https://bot.example/hook ", false).unwrap(), "https://bot.example/hook");
+        assert!(webhook_url("HTTPS://bot.example/hook", false).is_ok());
+        let refused = webhook_url("http://bot.example/hook", false).unwrap_err().to_string();
+        assert!(refused.contains("https://") && refused.contains("GROK_BOT_WEBHOOK_ALLOW_HTTP"), "{refused}");
+        assert!(webhook_url("http://127.0.0.1:9/hook", false).is_err());
+        assert_eq!(webhook_url("http://127.0.0.1:9/hook", true).unwrap(), "http://127.0.0.1:9/hook");
+        assert!(webhook_url("ftp://bot.example/hook", true).is_err());
+    }
+
+    #[test]
+    fn webhook_http_flag_accepts_one_true_or_yes() {
+        for on in ["1", "true", "yes", " TRUE ", "Yes"] {
+            assert!(flag_on(on), "{on}");
+        }
+        for off in ["", "0", "false", "no", "on", "2"] {
+            assert!(!flag_on(off), "{off}");
+        }
+    }
+
+    #[test]
+    fn reply_timeout_stays_inside_the_request_lifetime() {
+        assert_eq!(reply_timeout("180").unwrap(), 180);
+        assert_eq!(reply_timeout(" 1 ").unwrap(), 1);
+        assert_eq!(reply_timeout("3600").unwrap(), grokbot::MAX_REPLY_TIMEOUT_SECS);
+        assert!(reply_timeout("0").is_err());
+        assert!(reply_timeout("3601").is_err());
+        assert!(reply_timeout("nope").is_err());
     }
 
     #[test]

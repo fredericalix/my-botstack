@@ -73,6 +73,13 @@ fn apology(language: &str) -> &'static str {
     say(language, "Désolé, je n'arrive pas à répondre pour l'instant. Tu peux répéter ?", "Sorry, I can't answer right now. Can you say that again?")
 }
 
+/// Said when a Grok Bot routine accepts the question and then never calls
+/// `stackchan_reply`. The bridge's own line: if the link is already gone, it
+/// is dropped, not kept for the next connection.
+fn grok_bot_silent(language: &str) -> &'static str {
+    say(language, "Grok Bot n'a pas répondu.", "Grok Bot didn't answer.")
+}
+
 /// Said when MAX_CONVERSATIONS are open.
 fn busy_text(language: &str) -> &'static str {
     say(language, "Je suis occupé, réessaie dans un moment.", "I'm busy, try again in a moment.")
@@ -946,7 +953,7 @@ impl Link {
         grokbot.remember(&request_id, &self.device_id);
         let profile = self.profile();
         let payload = json!({
-            "request_id": request_id,
+            "request_id": request_id.clone(),
             "question": question.chars().take(1000).collect::<String>(),
             "device_id": self.device_id,
             "device_name": profile.name,
@@ -955,11 +962,21 @@ impl Link {
         });
         let language = profile.language;
         let commands = self.commands.clone();
+        let timeout = grokbot.reply_timeout();
         tokio::spawn(async move {
             if let Err(reason) = grokbot.post_webhook(payload, &language).await {
                 grokbot.forget(&request_id);
                 let _ = commands.send(Command::Say { text: reason.to_string(), kind: Kind::Reply });
+                return;
             }
+            tokio::time::sleep(timeout).await;
+            if !grokbot.claim_silence(&request_id) {
+                return;
+            }
+            let text = grok_bot_silent(&language).to_string();
+            // The bridge's own apology. A closed link drops it: it is not one
+            // of Grok Bot's messages, so it is not written to grok_pending.json.
+            let _ = commands.send(Command::Say { text, kind: Kind::Reply });
         });
         "The question was sent to Grok Bot. Tell them in a few words that you are asking it; \
          its answer will be read out later by itself."
@@ -1261,7 +1278,7 @@ impl Link {
             return;
         }
         for text in unspoken {
-            self.app.grokbot.accept(None, &text, Some(&self.device_id), Kind::Push);
+            let _ = self.app.grokbot.accept(None, &text, Some(&self.device_id), Kind::Push);
         }
     }
 }
@@ -1296,6 +1313,87 @@ mod tests {
         assert_eq!(apology("en"), "Sorry, I can't answer right now. Can you say that again?");
         assert_eq!(busy_text("fr"), "Je suis occupé, réessaie dans un moment.");
         assert_eq!(busy_text("es"), "I'm busy, try again in a moment.");
+        assert_eq!(grok_bot_silent("fr"), "Grok Bot n'a pas répondu.");
+        assert_eq!(grok_bot_silent("en"), "Grok Bot didn't answer.");
+        assert_eq!(grok_bot_silent("de"), "Grok Bot didn't answer.");
+    }
+
+    fn app_waiting(dir: &std::path::Path, timeout: Duration) -> Arc<App> {
+        let fleet = Arc::new(
+            crate::fleet::Fleet::load(
+                crate::fleet::Config {
+                    path: dir.join("fleet.json"),
+                    bootstrap: BOOTSTRAP.into(),
+                    default_voice: "eve".into(),
+                    default_language: "en".into(),
+                    timezone: chrono_tz::UTC,
+                    seed: Some(crate::fleet::Seed { mac: MAC.into(), name: "stackchan".into(), locked: false }),
+                },
+                None,
+            )
+            .unwrap(),
+        );
+        let grokbot = Arc::new(crate::grokbot::GrokBot::new(
+            crate::grokbot::Config {
+                token: "grok-token".into(),
+                webhook_url: "https://example.invalid/hook".into(),
+                webhook_token: "hook-key".into(),
+                default_device: MAC.into(),
+                pending_path: dir.join("pending.json"),
+                rate_per_hour: 10,
+                reply_timeout: timeout,
+                fleet: fleet.clone(),
+            },
+            None,
+            Some(Arc::new(|_url: String, _payload: serde_json::Value| Box::pin(async { Ok(200) }))),
+        ));
+        App::new(
+            grokbot,
+            fleet,
+            crate::realtime::Settings {
+                api_key: String::new(),
+                url: String::new(),
+                model: String::new(),
+                voice: "eve".into(),
+                reasoning: "none".into(),
+                persona: crate::realtime::Persona::default(),
+            },
+            crate::vision::Vision::new(String::new(), "grok-4.3".into(), "https://example.invalid/vision".into()),
+            Duration::from_secs(40),
+            crate::firmware::Firmware { dir: dir.join("firmware"), url: "https://example.invalid/firmware".into() },
+            crate::slots::Slots::new(3),
+            crate::testing::ADMIN.into(),
+        )
+    }
+
+    #[tokio::test]
+    async fn an_unanswered_grok_bot_question_is_said_aloud() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = app_waiting(dir.path(), Duration::from_millis(40));
+        let (out, _outgoing) = mpsc::unbounded_channel();
+        let (commands, mut incoming) = mpsc::unbounded_channel();
+        let mut link = Link::new(app, out, MAC.to_string(), commands).unwrap();
+        link.approved = true;
+        let told = link.ask_grok_bot("what is on my calendar");
+        assert!(told.contains("sent to Grok Bot"), "{told}");
+        let command = tokio::time::timeout(Duration::from_secs(2), incoming.recv()).await.expect("silence").expect("channel");
+        let Command::Say { text, kind } = command else { panic!("expected the silence line") };
+        assert_eq!(kind, Kind::Reply);
+        assert_eq!(text, "Grok Bot didn't answer.");
+    }
+
+    #[tokio::test]
+    async fn silence_is_dropped_when_the_robot_is_already_gone() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = app_waiting(dir.path(), Duration::from_millis(40));
+        let (out, _outgoing) = mpsc::unbounded_channel();
+        let (commands, incoming) = mpsc::unbounded_channel();
+        let mut link = Link::new(app.clone(), out, MAC.to_string(), commands).unwrap();
+        link.approved = true;
+        assert!(link.ask_grok_bot("hello").contains("sent to Grok Bot"));
+        drop(incoming);
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        assert!(app.grokbot.take_pending(MAC).is_empty());
     }
 
     #[test]

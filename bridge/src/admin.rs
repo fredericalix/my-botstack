@@ -249,7 +249,8 @@ fn run(app: &App, tool: &str, arguments: &Value) -> Result<String, String> {
             if text.trim().is_empty() {
                 return Err("text is required.".into());
             }
-            Ok(format!("{}: {}", label(&mac, &device), app.grokbot.accept(None, &text, Some(&mac), Kind::Push)))
+            let state = app.grokbot.accept(None, &text, Some(&mac), Kind::Push)?;
+            Ok(format!("{}: {}", label(&mac, &device), state))
         }
         other => Err(format!("Unknown tool {other}.")),
     }
