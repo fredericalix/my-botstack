@@ -5,13 +5,13 @@ From an empty server to a robot that talks. Count an hour, most of it waiting fo
 1. [What you get](#what-you-get)
 2. [What you need](#what-you-need)
 3. [Set up the server](#set-up-the-server)
-4. [Install ESP-IDF 5.5.4](#install-esp-idf-554)
-5. [Flash a StackChan](#flash-a-stackchan)
-6. [Flash the P4 board](#flash-the-p4-board)
-7. [Approve the device](#approve-the-device)
-8. [Talk](#talk)
-9. [Administer it from an AI](#administer-it-from-an-ai)
-10. [Optional: Grok Bot](#optional-grok-bot)
+4. [Connect Grok Bot](#connect-grok-bot)
+5. [Install ESP-IDF 5.5.4](#install-esp-idf-554)
+6. [Flash a StackChan](#flash-a-stackchan)
+7. [Flash the P4 board](#flash-the-p4-board)
+8. [Approve the device](#approve-the-device)
+9. [Talk](#talk)
+10. [Administer it from an AI](#administer-it-from-an-ai)
 11. [Updates over the air](#updates-over-the-air)
 12. [Make it yours](#make-it-yours)
 13. [Troubleshooting](#troubleshooting)
@@ -30,8 +30,9 @@ on one or both of these devices:
 
 Each device keeps a WebSocket open to **botstack-bridge**, which you run on your server
 with Docker Compose. The bridge talks to xAI, keeps the list of your devices, and serves
-an MCP endpoint so an AI (Claude Code, for one) can manage them. Optionally, an agent of
-yours (“Grok Bot”) answers the questions the voice cannot, such as your calendar.
+an MCP endpoint so an AI (Claude Code, for one) can manage them. And **Grok Bot**, xAI's
+cloud agent, answers the questions the voice cannot, such as your calendar or your mail,
+and can make your devices speak on its own: that link is what started this project.
 
 ## What you need
 
@@ -44,7 +45,9 @@ yours (“Grok Bot”) answers the questions the voice cannot, such as your cale
 | A USB-C **data** cable (a charge-only cable shows no serial port) | flashing |
 | A 2.4 GHz Wi-Fi network | both devices: the P4's Wi-Fi chip has no 5 GHz, and the StackChan's ESP32-S3 neither |
 
-**A server**: any Linux machine (or other Docker host) reachable from the internet, with
+**A server on the internet**: any Linux machine (or other Docker host) with a public
+address. Your devices reach it from wherever they are, and so does Grok Bot, which runs in
+xAI's cloud: a bridge on a LAN or behind a VPN does not work. It needs
 
 - Docker Engine and the Compose plugin (`docker compose version`), `git`, `openssl`,
   `python3` and `curl`;
@@ -58,6 +61,9 @@ yours (“Grok Bot”) answers the questions the voice cannot, such as your cale
 $0.08 per minute of conversation (check xAI's current pricing); text to speech and the
 camera's vision model are billed too. `MAX_CONVERSATIONS` (3 by default) caps how many
 conversations run at once.
+
+**A Grok account with Grok Bot**, on a plan that allows custom connectors (MCP), for
+[Grok Bot](#connect-grok-bot).
 
 **A computer to build and flash the firmware** (macOS or Linux) with `git`, `python3` and
 ESP-IDF 5.5.4 ([below](#install-esp-idf-554)). It can be the server itself.
@@ -110,6 +116,61 @@ health check fails, see [troubleshooting](#troubleshooting).
 
 Every setting is in `.env` and in [docs/deployment.md](docs/deployment.md); after an
 edit, `docker compose up -d` applies it.
+
+## Connect Grok Bot
+
+Grok Bot is xAI's cloud agent: it can read the accounts, mail, calendar and files you
+connect it to, and it is why this project exists. The realtime voice answers everyday
+questions itself and hands Grok Bot everything it cannot see (“what is on my calendar
+today?”, “did the deploy finish?”); Grok Bot works, then its answer is read out loud on
+the device. Grok Bot can also make a device speak at any time, look through a
+StackChan's camera, list the devices or lock them.
+
+> **The bridge must be on the internet.** Grok Bot runs in xAI's cloud, not on your
+> network: it calls the bridge's MCP endpoint `https://<your domain>/grok/mcp`, and the
+> bridge calls Grok Bot's webhook. A bridge on a LAN, behind a VPN, or with a certificate
+> that is not publicly trusted cannot be reached by Grok Bot. Check from outside your
+> network (a phone on mobile data will do): `https://<your domain>/grok/health` must
+> answer `{"ok":true}`.
+
+1. **Give Grok Bot the bridge as an MCP connector.** On grok.com, add a custom connector
+   (Grok's connectors page) with the URL `https://<your domain>/grok/mcp` and the header
+   `Authorization: Bearer <GROK_BRIDGE_TOKEN>` (from `.env`), then enable it for Grok Bot.
+   It is MCP over streamable HTTP (POST only, JSON answers). Set its tools to **always
+   allowed**: an approval card would expire before anyone sees it.
+2. **Give the bridge Grok Bot's webhook.** Create a Grok Bot run triggered by a webhook,
+   and put its URL in `.env` as `GROK_BOT_WEBHOOK_URL` (HTTPS), with
+   `GROK_BOT_WEBHOOK_TOKEN` if the webhook wants a bearer token. Describe what Grok Bot
+   can reach in `GROK_BOT_SCOPE`, so the voice knows when to call it. Then
+   `docker compose up -d`.
+3. **Tell Grok Bot how to answer**, in the instructions of that webhook run: answer every
+   run by calling `stackchan_reply` once with the run's `request_id`, in one to three
+   spoken sentences in the request's `language`, without markdown or URLs.
+
+The bridge posts each question as JSON:
+
+```json
+{
+  "request_id": "6f1c…",
+  "question": "What is on my calendar today?",
+  "device_id": "02:00:00:00:00:01",
+  "device_name": "desk",
+  "language": "en",
+  "reply_via": "mcp:stackchan_reply"
+}
+```
+
+Grok Bot answers by calling the MCP tool `stackchan_reply` with the same `request_id` and a
+`text`. Without MCP, `POST https://<your domain>/grok/callback` with the same bearer header
+and the body `{"request_id": "…", "text": "…"}` does the same.
+
+The other tools of the connector: `stackchan_say` (make a device speak at any time),
+`stackchan_photo` (a photo from a StackChan's camera, as an image), `stackchan_lock` and
+`stackchan_devices`. Limits: 10 questions, 30 messages and 20 photos per hour. Details:
+[docs/grok-bot.md](docs/grok-bot.md).
+
+The voice also works before Grok Bot is connected: asking for it then just makes the device
+say it is not configured.
 
 ## Install ESP-IDF 5.5.4
 
@@ -331,41 +392,6 @@ Five wrong tokens within a minute from one address block that address for a minu
 (other addresses still get in). Details:
 [docs/fleet.md](docs/fleet.md).
 
-## Optional: Grok Bot
-
-Grok Bot is any agent of yours that can receive a webhook and call an MCP server: an
-automation platform, a scheduled agent, your own script. The voice hands it the questions
-it cannot answer alone (“what is on my calendar today?”), and reads its answer out loud
-when it comes back. Without it everything else works; asking for Grok Bot just makes the
-robot say it is not configured.
-
-1. In `.env`, set `GROK_BOT_WEBHOOK_URL` (HTTPS) and, if your agent wants one,
-   `GROK_BOT_WEBHOOK_TOKEN` (sent as `Authorization: Bearer`). Optionally describe what it
-   can reach in `GROK_BOT_SCOPE`. Then `docker compose up -d`.
-2. The bridge posts each question as JSON:
-
-   ```json
-   {
-     "request_id": "6f1c…",
-     "question": "What is on my calendar today?",
-     "device_id": "02:00:00:00:00:01",
-     "device_name": "desk",
-     "language": "en",
-     "reply_via": "mcp:stackchan_reply"
-   }
-   ```
-
-3. Your agent answers by calling the MCP tool `stackchan_reply` with the same `request_id`
-   and a `text` of one to three spoken sentences in `language`, on
-   `https://<your domain>/grok/mcp` with `Authorization: Bearer <GROK_BRIDGE_TOKEN>`.
-   Without MCP, `POST https://<your domain>/grok/callback` with the same header and the
-   body `{"request_id": "…", "text": "…"}` does the same.
-
-The same MCP server has more tools for your agent: `stackchan_say` (make a device speak
-at any time), `stackchan_photo` (a photo from a StackChan's camera, as an image),
-`stackchan_lock` and `stackchan_devices`. Limits: 10 questions, 30 messages and 20 photos
-per hour. Details: [docs/grok-bot.md](docs/grok-bot.md).
-
 ## Updates over the air
 
 Once a device runs botstack, later versions need no cable. After a `git pull`, on a
@@ -453,8 +479,10 @@ minute.
 
 **Asking Grok Bot does nothing useful.** “Not configured”: `GROK_BOT_WEBHOOK_URL` is
 empty. “Did not accept the question” or “can't reach”: the webhook answered an error or
-did not answer within 8 s. The answer never comes: your agent must call `stackchan_reply`
-with the same `request_id`.
+did not answer within 8 s. The answer never comes: Grok Bot must call `stackchan_reply`
+with the same `request_id`, and it can only do so if it reaches
+`https://<your domain>/grok/mcp` from the internet with `GROK_BRIDGE_TOKEN` (check the
+connector, and `/grok/health` from outside your network).
 
 **No serial port.** A charge-only cable or some hubs show none. On Linux, add yourself to
 the group that owns `/dev/ttyACM0` (often `dialout`) and log in again.

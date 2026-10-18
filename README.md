@@ -1,12 +1,15 @@
 # botstack
 
 botstack turns the M5Stack StackChan robot, and a round-screen ESP32-P4 board, into voice
-assistants that talk with xAI's Grok realtime voice. It is a complete stack you host
+assistants that talk with xAI's Grok realtime voice and hand the rest to **Grok Bot**,
+xAI's cloud agent with your accounts, mail and calendar: it started as a way to ask Grok
+Bot things from the desk, out loud. It is a complete stack you host
 yourself: an ESP-IDF firmware with an animated face (bloub), and a small Rust bridge that
 runs on your server behind Caddy, keeps the devices' always-on link, shapes the voice for
 their small speakers, runs their tools (face, head, camera), and lets an AI manage the
-fleet over MCP. No cloud service is in the path but xAI's (and your own agent, if you
-add one).
+fleet over MCP. No cloud service is in the path but xAI's (the realtime voice and Grok
+Bot). The bridge must be reachable from the internet: your devices and Grok Bot both call
+it.
 
 **Start here: [QUICKSTART.md](QUICKSTART.md)**, from an empty server to a talking robot.
 
@@ -33,8 +36,9 @@ add one).
   reboot devices, rotate their keys and report their firmware, from Claude Code or any MCP
   client, or `scripts/fleet.sh` from a shell. Publishing a firmware is
   `scripts/publish-firmware.sh`.
-- **Optional Grok Bot**: hand questions the voice cannot answer to an agent of yours
-  (webhook out, MCP back); it can also make a device speak, take a photo, or lock it.
+- **Grok Bot**: the voice hands what it cannot answer to Grok Bot (webhook out, MCP
+  back) and reads its answer aloud; Grok Bot can also make a device speak on its own, take
+  a photo, list or lock the devices.
 - **Signed updates over the air** with rollback, served by the bridge.
 - **One-command server**: Docker Compose with Caddy (automatic HTTPS), a hardened bridge
   container, `scripts/setup.sh` for the configuration.

@@ -2,20 +2,24 @@
 
 ![Grok Bot: replies, pushes, photos and the lock](img/grok-bot.svg)
 
-Grok Bot is an optional, slower agent of your own: anything that can receive a webhook
-and call an MCP server. It might read your mail, calendar, accounts or files
-(`GROK_BOT_SCOPE` tells the voice what it can reach). The voice model calls it when you
-ask for something only it can see, or when you name it; it never listens to you directly.
+Grok Bot is xAI's cloud agent, slower than the realtime voice but connected to your mail,
+calendar, accounts or files (`GROK_BOT_SCOPE` tells the voice what it can reach). The
+voice model calls it when you ask for something only it can see, or when you name it; it
+never listens to you directly. It is the reason botstack exists. The bridge speaks to it
+through a webhook and an MCP server, so any agent that can receive a webhook and call MCP
+can take its place.
 
-Without it the bridge works the same; asking for Grok Bot just makes the robot say it is
-not configured.
+The bridge must be reachable from the internet over publicly trusted HTTPS: Grok Bot runs
+in xAI's cloud and calls `https://<your domain>/grok/mcp`. Until Grok Bot is connected,
+asking for it just makes the robot say it is not configured.
 
 ## Setting it up
 
 1. Give the bridge the webhook: `GROK_BOT_WEBHOOK_URL` (HTTPS) and, if your agent wants
    one, `GROK_BOT_WEBHOOK_TOKEN` (sent as `Authorization: Bearer`). Then
    `docker compose up -d`.
-2. Give your agent the bridge's MCP server: `https://<your domain>/grok/mcp`, with
+2. Give Grok Bot the bridge's MCP server, as a custom connector on grok.com enabled for
+   Grok Bot: `https://<your domain>/grok/mcp`, with
    `Authorization: Bearer <GROK_BRIDGE_TOKEN>` (from `.env`). It is MCP over streamable
    HTTP (POST only, JSON answers). If your agent asks for approval before each tool call,
    set these tools to always allowed: an approval card would expire before anyone sees it.
