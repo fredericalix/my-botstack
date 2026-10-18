@@ -22,8 +22,10 @@ add one).
   sleeping states and one-shot animations, chosen by Grok as it talks.
 - **The StackChan's body**: head moves and gestures (nod, shake, look around) on its two
   servos, head touch, and the camera (“what do you see?”, answered by `grok-4.3` vision).
-- **Two boards**: the StackChan (M5Stack CoreS3, ESP32-S3), dual-booting next to its stock
-  firmware until the first update over the air replaces it, and the Waveshare ESP32-P4-WIFI6-Touch-LCD-4C (720×720 round screen).
+- **Two boards**: the [M5Stack StackChan](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot) (CoreS3, ESP32-S3), dual-booting next to its
+  stock firmware until the first update over the air replaces it, and the
+  [Waveshare ESP32-P4 round touch board](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-3.4c.htm) in its 4-inch 720×720 version
+  (ESP32-P4-WIFI6-Touch-LCD-4C; the 3.4-inch 800×800 version on the same page is not supported).
 - **A fleet**: each device introduces itself, waits for your approval, then gets its own
   key; per-device name, voice, language, notes and lock; a cap on simultaneous
   conversations; health reports.

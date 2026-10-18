@@ -1,6 +1,7 @@
 # botstack documentation
 
-botstack gives the M5Stack StackChan robot (and an ESP32-P4 board) its own stack: an
+botstack gives the [M5Stack StackChan](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot) robot (and the
+[Waveshare ESP32-P4-WIFI6-Touch-LCD-4C](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-3.4c.htm) round board, 4-inch version) its own stack: an
 ESP-IDF firmware with the bloub face, and a Rust bridge that connects it to xAI's Grok
 realtime voice. These pages
 explain how the pieces fit, with one picture each.

@@ -23,10 +23,10 @@ A voice assistant on your desk that talks with xAI's Grok realtime voice
 (`grok-voice-3.0`): you tap it and talk, it answers out loud with an animated face. It runs
 on one or both of these devices:
 
-- the **M5Stack StackChan** robot: it also turns its head, nods, and looks through its
+- the **[M5Stack StackChan](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot)** robot: it also turns its head, nods, and looks through its
   camera (“what do you see?”);
-- the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4C** board: a 720×720 round screen, no head,
-  no camera.
+- the **[Waveshare ESP32-P4-WIFI6-Touch-LCD-4C](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-3.4c.htm)** board: a 720×720 round screen, no head,
+  no camera (on that page, pick the 4-inch 720×720 version; the 3.4-inch one is not supported).
 
 Each device keeps a WebSocket open to **botstack-bridge**, which you run on your server
 with Docker Compose. The bridge talks to xAI, keeps the list of your devices, and serves
@@ -39,8 +39,8 @@ yours (“Grok Bot”) answers the questions the voice cannot, such as your cale
 
 | Item | For |
 | --- | --- |
-| M5Stack StackChan kit (CoreS3 with the servo base, head touch and camera) | the robot |
-| or the Waveshare ESP32-P4-WIFI6-Touch-LCD-4C and an 8 Ω speaker on its speaker connector | the round-screen board |
+| [M5Stack StackChan](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot) kit (CoreS3 with the servo base, head touch and camera) | the robot |
+| or the [Waveshare ESP32-P4-WIFI6-Touch-LCD-4C](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-3.4c.htm) (4-inch, 720×720) and an 8 Ω speaker on its speaker connector | the round-screen board |
 | A USB-C **data** cable (a charge-only cable shows no serial port) | flashing |
 | A 2.4 GHz Wi-Fi network | both devices: the P4's Wi-Fi chip has no 5 GHz, and the StackChan's ESP32-S3 neither |
 

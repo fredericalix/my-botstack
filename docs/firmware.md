@@ -13,7 +13,7 @@ botstack runs on two boards. The code they share lives in one ESP-IDF component,
 
 | | StackChan (`firmware/`) | P4 (`firmware-p4/`) |
 | --- | --- | --- |
-| Board | M5Stack CoreS3 (ESP32-S3) on the StackChan | Waveshare ESP32-P4-WIFI6-Touch-LCD-4C (ESP32-P4 chip v1.3) |
+| Board | M5Stack CoreS3 (ESP32-S3) on the [StackChan](https://shop.m5stack.com/products/stackchan-kawaii-co-created-open-source-ai-desktop-robot) | [Waveshare ESP32-P4-WIFI6-Touch-LCD-4C](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-3.4c.htm) (4-inch 720×720 version; ESP32-P4 chip v1.3) |
 | Project (`hello`) | `botstack-fw` | `botstack-p4` |
 | Screen | 320x240, `screen:rect-320x240` | 720x720 round panel (JD9365, GT911 touch), `screen:round-720`; the face disc is 600 px, laid out for a round screen |
 | Head, camera | servos and GC0308 | none (`HeadPort` and `CameraPort` are null) |
