@@ -325,11 +325,13 @@ impl GrokBot {
     /// that is not approved. A text for a device that is not approved is not
     /// queued.
     pub fn accept(&self, request_id: Option<&str>, text: &str, device_id: Option<&str>, kind: Kind) -> Result<&'static str, &'static str> {
+        // The request is answered even when the text cleans to nothing: the
+        // robot must not say that Grok Bot did not answer.
+        let known = request_id.and_then(|id| self.state.lock().unwrap().requests.remove(id));
         let cleaned = clean_speech(text);
         if cleaned.is_empty() {
             return Ok("empty");
         }
-        let known = request_id.and_then(|id| self.state.lock().unwrap().requests.remove(id));
         let explicit = device_id.map(str::trim).filter(|d| !d.is_empty()).map(str::to_string);
         let from_request = known.and_then(|pending| {
             if pending.device.is_empty() || pending.device == "unknown" { None } else { Some(pending.device) }
@@ -1269,5 +1271,14 @@ mod tests {
         f.bot.remember("stale", MAC);
         f.now.fetch_add(MAX_REPLY_TIMEOUT_SECS + 1, Ordering::SeqCst);
         assert!(!f.bot.claim_silence("stale"));
+    }
+
+    #[test]
+    fn an_empty_reply_still_answers_the_request() {
+        let f = fixture();
+        f.bot.remember("req", MAC);
+        assert_eq!(f.bot.accept(Some("req"), "**", None, Kind::Reply), Ok("empty"));
+        assert!(!f.bot.claim_silence("req"), "the routine did reply: no silence line");
+        assert!(f.recorder.spoken.lock().unwrap().is_empty());
     }
 }

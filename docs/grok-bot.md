@@ -98,7 +98,9 @@ menus: those labels change from one version of the app to the next.
    If the robot stays silent, open the Bot's chat and see what the run did: usually the
    plugin was missing, or `stackchan_reply` was not called. If no reply arrives within
    `GROK_BOT_REPLY_TIMEOUT` seconds (180 by default, from 1 to 3600), the robot says
-   that Grok Bot did not answer. If it has disconnected, that line is dropped.
+   that Grok Bot did not answer. That line is the bridge's own, never kept for the
+   next connection: it is dropped if the robot has disconnected, or drops before it
+   is played.
 
    **The reply path**, without waiting for the routine (expect
    `{"ok":true,"delivery":"spoken"}` when that device is online, or `"queued"` when it
@@ -158,7 +160,13 @@ was asked. Texts are cut at 500 characters.
 
 The bridge refuses to start when `GROK_BOT_WEBHOOK_URL` is `http://`, because the
 webhook key would travel in clear. `GROK_BOT_WEBHOOK_ALLOW_HTTP` set to `1`, `true`,
-or `yes` allows it, for a local bridge only; the log then warns once.
+or `yes` allows it, for a local bridge only; the log then warns once. A URL with no
+host (`https://` left from an unfinished edit) is refused at start too, rather than
+at the first question.
+
+A `stackchan_reply` whose text is empty once cleaned (markdown marks only) answers the
+request all the same: nothing is spoken, and the robot does not say that Grok Bot did
+not answer.
 
 ## Pushing (B)
 

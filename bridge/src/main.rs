@@ -73,26 +73,27 @@ fn reply_timeout(raw: &str) -> anyhow::Result<u64> {
 
 /// `GROK_BOT_WEBHOOK_URL`. Empty means Grok Bot is off. `https://` is the
 /// only scheme that keeps `GROK_BOT_WEBHOOK_TOKEN` off the wire in clear;
-/// `http://` is refused unless `allow_http` is set, for a local bridge.
+/// `http://` is refused unless `allow_http` is set, for a local bridge. A URL
+/// without a host (`https://`, left from an unfinished edit) is refused here
+/// rather than at the first question.
 fn webhook_url(raw: &str, allow_http: bool) -> anyhow::Result<String> {
     let url = raw.trim();
     if url.is_empty() {
         return Ok(String::new());
     }
-    let scheme = url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("");
-    if scheme.eq_ignore_ascii_case("https") {
-        return Ok(url.to_string());
+    let parsed = url::Url::parse(url).map_err(|error| anyhow::anyhow!("GROK_BOT_WEBHOOK_URL is not a valid URL: {error}"))?;
+    if parsed.host_str().is_none_or(str::is_empty) {
+        bail!("GROK_BOT_WEBHOOK_URL has no host");
     }
-    if scheme.eq_ignore_ascii_case("http") {
-        if allow_http {
-            return Ok(url.to_string());
-        }
-        bail!(
+    match parsed.scheme() {
+        "https" => Ok(url.to_string()),
+        "http" if allow_http => Ok(url.to_string()),
+        "http" => bail!(
             "GROK_BOT_WEBHOOK_URL must use https:// (the webhook key would travel in clear over http://). \
              Set GROK_BOT_WEBHOOK_ALLOW_HTTP to 1, true, or yes only for local development."
-        );
+        ),
+        _ => bail!("GROK_BOT_WEBHOOK_URL must be an https:// URL"),
     }
-    bail!("GROK_BOT_WEBHOOK_URL must be an https:// URL")
 }
 
 /// `KEYTERMS`: a comma-separated list; blanks are dropped.
@@ -367,6 +368,16 @@ mod tests {
         assert!(webhook_url("http://127.0.0.1:9/hook", false).is_err());
         assert_eq!(webhook_url("http://127.0.0.1:9/hook", true).unwrap(), "http://127.0.0.1:9/hook");
         assert!(webhook_url("ftp://bot.example/hook", true).is_err());
+    }
+
+    #[test]
+    fn a_webhook_without_a_host_is_refused_at_start() {
+        for url in ["https://", "https://:443/hook", "https://bot.example:port/hook", "http://", "https:// bot.example/hook"] {
+            let refused = webhook_url(url, true).unwrap_err().to_string();
+            assert!(refused.contains("GROK_BOT_WEBHOOK_URL"), "{url}: {refused}");
+        }
+        assert!(webhook_url("https://bot.example", false).is_ok());
+        assert!(webhook_url("https://user:pw@bot.example/hook?x=1", false).is_ok());
     }
 
     #[test]

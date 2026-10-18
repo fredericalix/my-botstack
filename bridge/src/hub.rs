@@ -12,6 +12,9 @@ use crate::grokbot::{Kind, Speaker};
 pub enum Command {
     /// A Grok Bot reply or pushed message for this conversation.
     Say { text: String, kind: Kind },
+    /// The bridge's own line (Grok Bot unreachable, or silent): spoken now,
+    /// never kept for the next connection.
+    Notice { text: String },
     /// Verbatim speech is ready (see `speech`). `epoch` drops it after a tap.
     Played { epoch: u64, pcm: Vec<i16>, texts: Vec<String> },
     /// Take a photo for Grok Bot; the upload carries `key` (see `App::take_photo`).

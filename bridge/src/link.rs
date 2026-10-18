@@ -74,8 +74,9 @@ fn apology(language: &str) -> &'static str {
 }
 
 /// Said when a Grok Bot routine accepts the question and then never calls
-/// `stackchan_reply`. The bridge's own line: if the link is already gone, it
-/// is dropped, not kept for the next connection.
+/// `stackchan_reply`. The bridge's own line (`Command::Notice`): never kept
+/// for the next connection, whether the link is already gone or drops while
+/// it is being said.
 fn grok_bot_silent(language: &str) -> &'static str {
     say(language, "Grok Bot n'a pas répondu.", "Grok Bot didn't answer.")
 }
@@ -966,7 +967,7 @@ impl Link {
         tokio::spawn(async move {
             if let Err(reason) = grokbot.post_webhook(payload, &language).await {
                 grokbot.forget(&request_id);
-                let _ = commands.send(Command::Say { text: reason.to_string(), kind: Kind::Reply });
+                let _ = commands.send(Command::Notice { text: reason.to_string() });
                 return;
             }
             tokio::time::sleep(timeout).await;
@@ -976,7 +977,7 @@ impl Link {
             let text = grok_bot_silent(&language).to_string();
             // The bridge's own apology. A closed link drops it: it is not one
             // of Grok Bot's messages, so it is not written to grok_pending.json.
-            let _ = commands.send(Command::Say { text, kind: Kind::Reply });
+            let _ = commands.send(Command::Notice { text });
         });
         "The question was sent to Grok Bot. Tell them in a few words that you are asking it; \
          its answer will be read out later by itself."
@@ -988,7 +989,7 @@ impl Link {
     fn command(&mut self, command: Command) {
         match command {
             // A device waiting for approval gets no push and no tool.
-            Command::Say { .. } if !self.approved => {
+            Command::Say { .. } | Command::Notice { .. } if !self.approved => {
                 warn!(device = %self.device_id, "message for a device waiting for approval dropped");
             }
             Command::Photo { key } if !self.approved => {
@@ -1001,6 +1002,15 @@ impl Link {
                 } else {
                     self.push(vec![text]);
                 }
+            }
+            // The bridge's own line: said like a reply, but not kept if the
+            // robot drops before it is played (it is not Grok Bot's message).
+            Command::Notice { text } => {
+                if self.conversation.is_none() {
+                    self.animate("notify");
+                    self.listen_after_speech = true;
+                }
+                self.speak_verbatim(vec![text], true, false);
             }
             // A pushed message never cuts a conversation.
             Command::Say { text, kind: Kind::Push } => {
@@ -1377,9 +1387,20 @@ mod tests {
         let told = link.ask_grok_bot("what is on my calendar");
         assert!(told.contains("sent to Grok Bot"), "{told}");
         let command = tokio::time::timeout(Duration::from_secs(2), incoming.recv()).await.expect("silence").expect("channel");
-        let Command::Say { text, kind } = command else { panic!("expected the silence line") };
-        assert_eq!(kind, Kind::Reply);
+        let Command::Notice { text } = command else { panic!("expected the silence line") };
         assert_eq!(text, "Grok Bot didn't answer.");
+    }
+
+    #[tokio::test]
+    async fn the_silence_line_is_not_kept_for_the_next_connection() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::testing::app(dir.path());
+        let (mut link_, _receiver) = link(&app, MAC);
+        link_.command(Command::Say { text: "Grok Bot's answer.".into(), kind: Kind::Reply });
+        link_.command(Command::Notice { text: "Grok Bot didn't answer.".into() });
+        assert_eq!(link_.unspoken, vec!["Grok Bot's answer."]);
+        link_.finish();
+        assert_eq!(app.grokbot.take_pending(MAC), vec!["Grok Bot's answer."]);
     }
 
     #[tokio::test]

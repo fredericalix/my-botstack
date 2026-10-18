@@ -84,7 +84,7 @@ do not leave a numeric setting empty, an empty value is not the default.
 | `ROBOT_TOKEN` | the bootstrap key, the same as `firmware/robot-token` ([security](security.md)) |
 | `FLEET_ADMIN_TOKEN` | the admin MCP's token (`/fleet/mcp`, `scripts/fleet.sh`); unset, `/fleet/mcp` answers 503 |
 | `GROK_BRIDGE_TOKEN` | Grok Bot's token on `/grok/mcp` and `/grok/callback`; unset, both refuse everyone |
-| `GROK_BOT_WEBHOOK_URL` | where questions for Grok Bot are posted. Empty: there is no Grok Bot ([Grok Bot](grok-bot.md)). Must be `https://`. An `http://` URL is refused at start, because the webhook key would travel in clear; `GROK_BOT_WEBHOOK_ALLOW_HTTP` set to `1`, `true`, or `yes` allows it for a local bridge and the log warns |
+| `GROK_BOT_WEBHOOK_URL` | where questions for Grok Bot are posted. Empty: there is no Grok Bot ([Grok Bot](grok-bot.md)). Must be `https://` with a host. An `http://` URL is refused at start, because the webhook key would travel in clear; `GROK_BOT_WEBHOOK_ALLOW_HTTP` set to `1`, `true`, or `yes` allows it for a local bridge and the log warns |
 | `GROK_BOT_WEBHOOK_TOKEN` | sent as `Authorization: Bearer` with each webhook. **Required** for a Grok Bot routine (it rejects the post without the key). Leave it empty only when the URL is empty, or when another agent does not use a bearer token |
 | `GROK_BOT_WEBHOOK_ALLOW_HTTP` | unset means off. `1`, `true`, or `yes` allow an `http://` webhook URL, for local development only. Any other value leaves it off |
 
