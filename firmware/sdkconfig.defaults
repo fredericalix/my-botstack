@@ -1,0 +1,76 @@
+# Same flash layout as the StackChan firmware: the USB flash puts botstack in
+# ota_1 next to StackChan in ota_0; updates over the air use both slots. NVS
+# and assets are never touched.
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# The bootloader already on the robot rolls back a new app that does not mark
+# itself valid. Keep the app side consistent with it.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Updates over the air must be signed (docs/firmware.md#updates). Without
+# hardware secure boot the running firmware trusts the key of its own
+# signature block, so the USB flash installs the key with the first signed
+# firmware. The bootloader already on the robot is not changed.
+CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=y
+CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=y
+CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES=y
+CONFIG_SECURE_BOOT_SIGNING_KEY="signing-key.pem"
+
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+CONFIG_FREERTOS_HZ=1000
+
+# LVGL: 16-bit panel, one ARGB canvas for the eyes. The canvas (200 x 200 ARGB,
+# 160 kB) does not fit LVGL's 64 kB builtin heap; the C library malloc puts it in PSRAM.
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_CANVAS=y
+CONFIG_LV_DRAW_SW_SUPPORT_ARGB8888=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+
+
+# Internal RAM is short once the AFE, the display and the tasks are up
+# (Wi-Fi init failed with 7 kB left). Put Wi-Fi, lwIP and TLS buffers in PSRAM,
+# and use 40-line display buffers: the face only redraws small boxes anyway.
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+CONFIG_BSP_LCD_DRAW_BUF_HEIGHT=40
+# Our audio and conversation tasks never write flash, so their stacks can live
+# in PSRAM (xTaskCreatePinnedToCoreWithCaps). That leaves internal RAM for the
+# WebSocket client, which could not create its task otherwise.
+CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY=y
+# A plain malloc() under 16 kB went to internal RAM first (the default); during
+# a photo that left 603 bytes and the TLS read of the bridge link failed. Only
+# allocations under 512 bytes go internal now; drivers ask for DMA or internal
+# memory explicitly.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=512
+# Hardware AES allocates an internal DMA bounce buffer for every record held in
+# PSRAM, and that allocation is what failed. Software AES needs none; the link
+# carries a few kB/s.
+# CONFIG_MBEDTLS_HARDWARE_AES is not set
+
+# Camera: GC0308 on DVP, 320x240 YUYV (software JPEG takes YUYV as is). At
+# 640x480 the DVP task could not copy the DMA halves in time while audio ran:
+# frames came torn and dark.
+CONFIG_CAMERA_GC0308=y
+CONFIG_CAMERA_GC0308_AUTO_DETECT_DVP_INTERFACE_SENSOR=y
+CONFIG_CAMERA_GC0308_DVP_YUV422_YUYV_320X240_20FPS=y
+CONFIG_CAMERA_GC0308_DVP_YUV422_YUYV_640X480_16FPS=n
+CONFIG_CAMERA_GC0308_DVP_DEFAULT_FMT_YUV422_YUYV_320X240_20FPS=y
+# Its overflow log prints from the interrupt, which makes overflows worse.
+CONFIG_CAM_CTRL_DVP_LOG_ENABLE=n
+# The DVP bounce buffer is internal DMA RAM, allocated at each stream start:
+# the default 32 kB was not free once Wi-Fi and TLS were up.
+CONFIG_CAM_CTRL_DVP_DMA_BUFFER_SIZE=16384

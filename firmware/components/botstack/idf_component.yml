@@ -1,0 +1,17 @@
+dependencies:
+  idf: ">=5.5"
+  # Echo cancellation (AFE) for the microphone, against the speaker reference.
+  # Public: audio/audio.h includes its interface.
+  espressif/esp-sr:
+    version: "~2.3.0"
+    require: public
+  # Opus encode (16 kHz microphone) and decode (24 kHz voice).
+  espressif/esp_audio_codec: "~2.4.1"
+  # Conversation link to the botstack bridge (net/link.h includes it).
+  espressif/esp_websocket_client:
+    version: "^1.5"
+    require: public
+  # The bloub face (face/bloub.h includes it).
+  lvgl/lvgl:
+    version: "^9"
+    require: public

@@ -1,0 +1,7 @@
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+robot-token
+bridge-url
+signing-key.pem

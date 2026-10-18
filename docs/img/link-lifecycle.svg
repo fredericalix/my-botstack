@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect width="1000" height="560" fill="#fff"/>
+<text x="500.0" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#111">The link: always on, watched from both ends</text>
+<text x="20" y="72" text-anchor="start" font-size="15" font-weight="700" fill="#2f6fdf">A. Healthy: the robot pings every 5 s, the bridge answers each ping</text>
+<rect x="20" y="90" width="120" height="34" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="80.0" y="112.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">Robot</text>
+<rect x="20" y="170" width="120" height="34" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="80.0" y="192.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">Bridge</text>
+<line x1="150" y1="107" x2="980" y2="107" stroke="#f08a24" stroke-width="2" stroke-dasharray="4 4"/>
+<line x1="150" y1="187" x2="980" y2="187" stroke="#2f6fdf" stroke-width="2" stroke-dasharray="4 4"/>
+<line x1="190" y1="110" x2="204" y2="183" stroke="#f08a24" stroke-width="2" marker-end="url(#a)"/>
+<text x="187.0" y="144.5" text-anchor="end" font-size="12" fill="#222">ping</text>
+<line x1="220" y1="184" x2="234" y2="111" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<text x="239.0" y="165.5" text-anchor="start" font-size="12" fill="#222">pong</text>
+<line x1="330" y1="110" x2="344" y2="183" stroke="#f08a24" stroke-width="2" marker-end="url(#a)"/>
+<line x1="360" y1="184" x2="374" y2="111" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<line x1="470" y1="110" x2="484" y2="183" stroke="#f08a24" stroke-width="2" marker-end="url(#a)"/>
+<line x1="500" y1="184" x2="514" y2="111" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<line x1="610" y1="110" x2="624" y2="183" stroke="#f08a24" stroke-width="2" marker-end="url(#a)"/>
+<line x1="640" y1="184" x2="654" y2="111" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<line x1="750" y1="110" x2="764" y2="183" stroke="#f08a24" stroke-width="2" marker-end="url(#a)"/>
+<line x1="780" y1="184" x2="794" y2="111" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<line x1="890" y1="110" x2="904" y2="183" stroke="#f08a24" stroke-width="2" marker-end="url(#a)"/>
+<line x1="920" y1="184" x2="934" y2="111" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<text x="20" y="232" text-anchor="start" font-size="12.5" font-weight="400" fill="#444">The robot restarts after 20 s without any frame from the bridge (pong timeout 10 s); the bridge drops a link silent for 75 s.</text>
+<text x="20" y="286" text-anchor="start" font-size="15" font-weight="700" fill="#c0392b">B. The bridge is unreachable (a deploy, the network): the robot retries, then restarts</text>
+<line x1="90" y1="380" x2="930" y2="380" stroke="#9aa7b8" stroke-width="2" marker-end="url(#a)"/>
+<line x1="90" y1="374" x2="90" y2="386" stroke="#9aa7b8" stroke-width="2"/>
+<text x="90" y="402" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7787">0 s</text>
+<line x1="290" y1="374" x2="290" y2="386" stroke="#9aa7b8" stroke-width="2"/>
+<text x="290" y="402" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7787">5 s</text>
+<line x1="490" y1="374" x2="490" y2="386" stroke="#9aa7b8" stroke-width="2"/>
+<text x="490" y="402" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7787">10 s</text>
+<line x1="690" y1="374" x2="690" y2="386" stroke="#9aa7b8" stroke-width="2"/>
+<text x="690" y="402" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7787">15 s</text>
+<line x1="890" y1="374" x2="890" y2="386" stroke="#9aa7b8" stroke-width="2"/>
+<text x="890" y="402" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7787">20 s</text>
+<rect x="30" y="310" width="120" height="44" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="90.0" y="337.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">last frame</text>
+<circle cx="130" cy="380" r="7" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="130" y="362" text-anchor="middle" font-size="11.5" font-weight="400" fill="#b25f10">retry +1 s</text>
+<circle cx="210" cy="380" r="7" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="210" y="362" text-anchor="middle" font-size="11.5" font-weight="400" fill="#b25f10">retry +2 s</text>
+<circle cx="370" cy="380" r="7" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="370" y="362" text-anchor="middle" font-size="11.5" font-weight="400" fill="#b25f10">retry +4 s</text>
+<circle cx="690" cy="380" r="7" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="690" y="362" text-anchor="middle" font-size="11.5" font-weight="400" fill="#b25f10">retry +8 s</text>
+<rect x="820" y="310" width="140" height="44" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="890.0" y="337.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">esp_restart()</text>
+<text x="20" y="440" text-anchor="start" font-size="12.5" font-weight="400" fill="#444">Back up: boot, Wi-Fi, connect with its own key (or the bootstrap key while it has none), hello. Unspoken messages wait in grok_pending.json.</text>
+<text x="20" y="470" text-anchor="start" font-size="15" font-weight="700" fill="#5b3cc4">C. What a tap (screen or head) does</text>
+<rect x="20" y="485" width="225" height="56" rx="12" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2"/>
+<text x="132.5" y="502.5" text-anchor="middle" font-size="13" font-weight="700" fill="#111">idle</text>
+<text x="132.5" y="521.5" text-anchor="middle" font-size="12" fill="#444">talk start</text>
+<rect x="265" y="485" width="225" height="56" rx="12" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2"/>
+<text x="377.5" y="502.5" text-anchor="middle" font-size="13" font-weight="700" fill="#111">listening · thinking</text>
+<text x="377.5" y="521.5" text-anchor="middle" font-size="12" fill="#444">talk stop</text>
+<rect x="510" y="485" width="225" height="56" rx="12" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2"/>
+<text x="622.5" y="502.5" text-anchor="middle" font-size="13" font-weight="700" fill="#111">speaking</text>
+<text x="622.5" y="521.5" text-anchor="middle" font-size="12" fill="#444">interrupt, silence</text>
+<rect x="755" y="485" width="225" height="56" rx="12" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2"/>
+<text x="867.5" y="502.5" text-anchor="middle" font-size="13" font-weight="700" fill="#111">offline · locked</text>
+<text x="867.5" y="521.5" text-anchor="middle" font-size="12" fill="#444">alert face</text>
+</svg>

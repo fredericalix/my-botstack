@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 750" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect width="1000" height="750" fill="#fff"/>
+<text x="500.0" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#111">Who may do what: keys, limits and the lock</text>
+<rect x="20" y="70" width="180" height="80" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="110.0" y="115.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Each device</text>
+<rect x="250" y="70" width="220" height="80" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="360.0" y="115.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111"></text>
+<text x="360" y="106" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/botstack/v1</text>
+<text x="360" y="124" text-anchor="middle" font-size="12.5" font-weight="400" fill="#444">and …/firmware</text>
+<rect x="520" y="70" width="460" height="80" rx="12" fill="#fffbe6" stroke="#e0c96b" stroke-width="2"/>
+<text x="750.0" y="115.0" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5a10"></text>
+<text x="540" y="96.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">Device-Id = its MAC (else 403); Bearer its own key,</text>
+<text x="540" y="114.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">or the bootstrap key ROBOT_TOKEN while it has none;</text>
+<text x="540" y="132.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">else 401 · 403 revoked · 429 pending full · 503</text>
+<line x1="202" y1="110" x2="248" y2="110" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="472" y1="110" x2="518" y2="110" stroke="#e0c96b" stroke-width="2" marker-end="url(#a)"/>
+<rect x="20" y="175" width="180" height="80" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="110.0" y="220.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Approved device</text>
+<rect x="250" y="175" width="220" height="80" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="360.0" y="220.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111"></text>
+<text x="360" y="220" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/mcp/vision/explain</text>
+<rect x="520" y="175" width="460" height="80" rx="12" fill="#fffbe6" stroke="#e0c96b" stroke-width="2"/>
+<text x="750.0" y="220.0" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5a10"></text>
+<text x="540" y="201.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">Bearer vision token: random per bridge process,</text>
+<text x="540" y="219.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">in the hello of approved devices only;</text>
+<text x="540" y="237.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">approved MAC with a camera, else 401</text>
+<line x1="202" y1="215" x2="248" y2="215" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="472" y1="215" x2="518" y2="215" stroke="#e0c96b" stroke-width="2" marker-end="url(#a)"/>
+<rect x="20" y="280" width="180" height="80" rx="12" fill="#f1ebff" stroke="#7c4dff" stroke-width="2"/>
+<text x="110.0" y="325.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Grok Bot</text>
+<rect x="250" y="280" width="220" height="80" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="360.0" y="325.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111"></text>
+<text x="360" y="325" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/grok/mcp</text>
+<rect x="520" y="280" width="460" height="80" rx="12" fill="#fffbe6" stroke="#e0c96b" stroke-width="2"/>
+<text x="750.0" y="325.0" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5a10"></text>
+<text x="540" y="306.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">Bearer GROK_BRIDGE_TOKEN, compared in constant time</text>
+<text x="540" y="324.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">replies and pushes only for approved devices;</text>
+<text x="540" y="342.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">10 asks, 30 pushes, 20 photos per hour</text>
+<line x1="202" y1="320" x2="248" y2="320" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="472" y1="320" x2="518" y2="320" stroke="#e0c96b" stroke-width="2" marker-end="url(#a)"/>
+<rect x="20" y="385" width="180" height="80" rx="12" fill="#f1ebff" stroke="#7c4dff" stroke-width="2"/>
+<text x="110.0" y="430.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Admin AI</text>
+<rect x="250" y="385" width="220" height="80" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="360.0" y="430.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111"></text>
+<text x="360" y="430" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/fleet/mcp</text>
+<rect x="520" y="385" width="460" height="80" rx="12" fill="#fffbe6" stroke="#e0c96b" stroke-width="2"/>
+<text x="750.0" y="430.0" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5a10"></text>
+<text x="540" y="411.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">Bearer FLEET_ADMIN_TOKEN (unset: 503), constant time;</text>
+<text x="540" y="429.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">wrong: 401; 5 wrong from one address in a minute:</text>
+<text x="540" y="447.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">429 to it for a minute; answers never hold a device key</text>
+<line x1="202" y1="425" x2="248" y2="425" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="472" y1="425" x2="518" y2="425" stroke="#e0c96b" stroke-width="2" marker-end="url(#a)"/>
+<rect x="20" y="490" width="180" height="80" rx="12" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2"/>
+<text x="110.0" y="535.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Anyone else</text>
+<rect x="250" y="490" width="220" height="80" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="360.0" y="535.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111"></text>
+<text x="360" y="535" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/healthz, /metrics</text>
+<rect x="520" y="490" width="460" height="80" rx="12" fill="#fffbe6" stroke="#e0c96b" stroke-width="2"/>
+<text x="750.0" y="535.0" text-anchor="middle" font-size="13" font-weight="700" fill="#6b5a10"></text>
+<text x="540" y="534.0" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b5a10">not routed by Caddy: inside the compose network only</text>
+<line x1="202" y1="530" x2="248" y2="530" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="472" y1="530" x2="518" y2="530" stroke="#e0c96b" stroke-width="2" marker-end="url(#a)"/>
+<rect x="20" y="610" width="450" height="120" rx="12" fill="#eef8f0" stroke="#2e9e5b" stroke-width="2"/>
+<text x="245.0" y="634.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Secrets: .env on the server</text>
+<text x="245.0" y="653.0" text-anchor="middle" font-size="12" fill="#2b6b43">XAI_API_KEY · GROK_BRIDGE_TOKEN · FLEET_ADMIN_TOKEN</text>
+<text x="245.0" y="670.0" text-anchor="middle" font-size="12" fill="#2b6b43">ROBOT_TOKEN · GROK_BOT_WEBHOOK_URL / _TOKEN</text>
+<text x="245.0" y="687.0" text-anchor="middle" font-size="12" fill="#2b6b43">never printed; filled by scripts/setup.sh;</text>
+<text x="245.0" y="704.0" text-anchor="middle" font-size="12" fill="#2b6b43">devices' own keys: SHA-256 only, in /data/fleet.json</text>
+<rect x="520" y="610" width="460" height="120" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="750.0" y="634.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">The lock</text>
+<text x="750.0" y="653.0" text-anchor="middle" font-size="12" fill="#444">stackchan_lock (Grok Bot) or fleet_lock (admin)</text>
+<text x="750.0" y="670.0" text-anchor="middle" font-size="12" fill="#444">locked: wary face, taps answered with alert,</text>
+<text x="750.0" y="687.0" text-anchor="middle" font-size="12" fill="#444">the open conversation closes; Grok Bot replies,</text>
+<text x="750.0" y="704.0" text-anchor="middle" font-size="12" fill="#444">pushes and photos still work. Per device, in fleet.json.</text>
+</svg>

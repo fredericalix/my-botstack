@@ -1,0 +1,60 @@
+# botstack on one server: the bridge, and Caddy in front of it for HTTPS.
+# First run scripts/setup.sh (it writes .env), then: docker compose up -d --build
+#
+# Only Caddy is reachable from outside (ports 80 and 443). It gets a Let's
+# Encrypt certificate for BOTSTACK_DOMAIN and passes the robots', Grok Bot's
+# and the fleet admin's paths to the bridge; /healthz and /metrics stay inside.
+#
+# The bridge's log holds what people say to the robots (docs/security.md#logs):
+# Docker keeps at most three files of 10 MB per container.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  bridge:
+    build: .
+    image: botstack-bridge:local
+    env_file: .env
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - botstack-data:/data
+    # For a local test without Caddy (fake_robot, scripts/fleet.sh with
+    # BOTSTACK_URL=http://127.0.0.1:8080), publish the port on the loopback:
+    # ports: ["127.0.0.1:8080:8080"]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/botstack-bridge", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+    logging: *logging
+
+  caddy:
+    image: caddy:2.10
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      BOTSTACK_DOMAIN: ${BOTSTACK_DOMAIN:?BOTSTACK_DOMAIN is not set in .env; run scripts/setup.sh}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      bridge:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  botstack-data:
+  caddy-data:
+  caddy-config:

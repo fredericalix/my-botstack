@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect width="1000" height="420" fill="#fff"/>
+<text x="500.0" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#111">A device in the fleet</text>
+<rect x="30" y="90" width="170" height="80" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="115.0" y="119.5" text-anchor="middle" font-size="14" font-weight="700" fill="#111">unknown</text>
+<text x="115.0" y="138.5" text-anchor="middle" font-size="12" fill="#444">bootstrap key</text>
+<rect x="220" y="90" width="170" height="80" rx="12" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2"/>
+<text x="305.0" y="111.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">pending</text>
+<text x="305.0" y="130.0" text-anchor="middle" font-size="12" fill="#444">confus face</text>
+<text x="305.0" y="147.0" text-anchor="middle" font-size="12" fill="#444">firmware, reboot only</text>
+<rect x="430" y="90" width="170" height="80" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="515.0" y="111.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">approved</text>
+<text x="515.0" y="130.0" text-anchor="middle" font-size="12" fill="#444">fleet_approve</text>
+<text x="515.0" y="147.0" text-anchor="middle" font-size="12" fill="#444">talks, Grok Bot</text>
+<rect x="640" y="90" width="170" height="80" rx="12" fill="#eef8f0" stroke="#2e9e5b" stroke-width="2"/>
+<text x="725.0" y="111.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">enrolled</text>
+<text x="725.0" y="130.0" text-anchor="middle" font-size="12" fill="#2b6b43">own key in NVS</text>
+<text x="725.0" y="147.0" text-anchor="middle" font-size="12" fill="#2b6b43">bootstrap refused</text>
+<rect x="850" y="90" width="130" height="80" rx="12" fill="#fffbe6" stroke="#e0c96b" stroke-width="2"/>
+<text x="915.0" y="119.5" text-anchor="middle" font-size="14" font-weight="700" fill="#6b5a10">revoked</text>
+<text x="915.0" y="138.5" text-anchor="middle" font-size="12" fill="#6b5a10">refused 10 min</text>
+<line x1="200" y1="130" x2="218" y2="130" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="390" y1="130" x2="428" y2="130" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="600" y1="130" x2="638" y2="130" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="619.0" y="68.0" text-anchor="middle" font-size="12" fill="#222">enroll {key, id}</text>
+<text x="619.0" y="83.0" text-anchor="middle" font-size="12" fill="#222">enrolled {id}</text>
+<line x1="810" y1="130" x2="848" y2="130" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="30" y="220" text-anchor="start" font-size="13" font-weight="400" fill="#444">Rotation, one at a time: a new enroll; both keys open until enrolled or a login with the new key. Offline rotation resets the key.</text>
+<text x="30" y="245" text-anchor="start" font-size="13" font-weight="400" fill="#444">Own key refused (401): the device erases it and comes back with the bootstrap key.</text>
+<text x="30" y="270" text-anchor="start" font-size="13" font-weight="400" fill="#444">The bridge keeps SHA-256 hashes only; no MCP answer and no log line holds a key.</text>
+<rect x="30" y="300" width="460" height="90" rx="12" fill="#f1ebff" stroke="#7c4dff" stroke-width="2"/>
+<text x="260.0" y="334.5" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/grok/mcp (Grok Bot)</text>
+<text x="260.0" y="353.5" text-anchor="middle" font-size="12" fill="#5b3cc4">stackchan_devices, say, photo, lock by name</text>
+<rect x="510" y="300" width="460" height="90" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="740.0" y="326.0" text-anchor="middle" font-size="14" font-weight="700" fill="#111">/fleet/mcp (admin AI)</text>
+<text x="740.0" y="345.0" text-anchor="middle" font-size="12" fill="#444">list, device, approve, rename, profile, lock,</text>
+<text x="740.0" y="362.0" text-anchor="middle" font-size="12" fill="#444">reboot, rotate key, revoke, firmware, say</text>
+</svg>

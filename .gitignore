@@ -1,0 +1,20 @@
+/target/
+/out/
+*.wav
+.DS_Store
+# The plan and notes of the agents that work on the repository.
+/.superpowers/
+CLAUDE.local.md
+
+# Secrets: the server's configuration (scripts/setup.sh), and its temporary
+# copy (scripts/dotenv.sh writes .env.tmp before renaming it).
+.env
+.env.*
+!.env.example
+# The firmware signing key, and any other key.
+*.pem
+# Wi-Fi passwords of the P4 board (firmware-p4/flash.sh writes them by USB).
+/firmware-p4/wifi.txt
+# The bootstrap key and the bridge URL the firmware embeds (also in firmware/.gitignore).
+/firmware/robot-token
+/firmware/bridge-url

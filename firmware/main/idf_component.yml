@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.5"
+  espressif/m5stack_core_s3: "^4.1"
+  # Software JPEG for the camera (the ESP32-S3 has no JPEG encoder).
+  espressif/esp_new_jpeg: "^0.6"

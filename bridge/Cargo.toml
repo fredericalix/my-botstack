@@ -1,0 +1,33 @@
+[package]
+name = "botstack-bridge"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+description = "botstack bridge: voice devices (StackChan, ESP32-P4) <-> xAI realtime voice, the device fleet, and the Grok Bot callbacks."
+
+[[bin]]
+name = "botstack-bridge"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", features = ["ws", "multipart"] }
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10"
+futures-util = "0.3"
+opus = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync", "signal", "fs"] }
+tokio-tungstenite = { version = "0.27", features = ["rustls-tls-webpki-roots"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+hound = "3"  # examples/shape.rs
+tempfile = "3"

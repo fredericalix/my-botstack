@@ -1,0 +1,64 @@
+# botstack on the Waveshare ESP32-P4-WIFI6-Touch-LCD-4C: 32 MB flash, two 8 MB
+# app slots for updates over the air (partitions.csv). The USB flash (flash.sh)
+# writes the bootloader, the table, the app and the Wi-Fi networks, never the
+# board's `nvs`; the Waveshare factory firmware is not kept.
+CONFIG_IDF_TARGET="esp32p4"
+# This board's P4 is revision v1.3; ESP-IDF 5.5 targets v3 by default.
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+# The bootloader (rollback, signed-app checks) nearly filled the 0x6000 bytes
+# before the default 0x8000 table; the table moves to 0x10000.
+CONFIG_PARTITION_TABLE_OFFSET=0x10000
+
+# A crash leaves an ELF core dump in the `coredump` partition; read it over USB
+# with `idf.py coredump-info`.
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+
+# A new app that does not mark itself valid (at the bridge's hello) is rolled
+# back by the bootloader on the next reset.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Updates over the air must be signed (docs/firmware.md#updates), with the
+# fleet's one key. Without hardware secure boot the running firmware trusts the
+# key of its own signature block.
+CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=y
+CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=y
+CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES=y
+CONFIG_SECURE_BOOT_SIGNING_KEY="../firmware/signing-key.pem"
+
+# The PSRAM in the P4 package; 200 MHz is the fastest a v1.x P4 takes (Waveshare's rev1_3 defaults).
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+CONFIG_FREERTOS_HZ=1000
+# app_main starts the display (MIPI DSI panel, touch, LVGL adapter) and the
+# audio; the default 3.5 kB is tight for that.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# LVGL: 16-bit panel, one ARGB canvas for the eyes (600 x 600 here, in PSRAM
+# through the C library malloc).
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_CANVAS=y
+CONFIG_LV_DRAW_SW_SUPPORT_ARGB8888=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+
+# The 4" round panel (720x720).
+CONFIG_BSP_LCD_TYPE_720_720_4_INCH=y
+
+# Same memory placement as the StackChan: Wi-Fi, lwIP and TLS buffers in
+# PSRAM, PSRAM stacks for the tasks that never write flash, and only
+# allocations under 512 bytes in internal RAM.
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=512

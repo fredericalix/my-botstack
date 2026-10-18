@@ -1,0 +1,63 @@
+# Checks every push and pull request: the bridge's tests and lints, the Docker
+# image, and both firmwares (built with throwaway keys and a placeholder URL).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libopus
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libopus-dev pkg-config cmake
+      # Pinned to the version the repository is checked with, so a new clippy
+      # lint does not turn CI red on its own; raise it on purpose.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo test -p botstack-bridge
+      - name: Clippy
+        run: cargo clippy -p botstack-bridge --all-targets -- -D warnings
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build .
+
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.4
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [firmware, firmware-p4]
+    steps:
+      - uses: actions/checkout@v4
+      # The build embeds firmware/robot-token and firmware/bridge-url and signs
+      # with firmware/signing-key.pem (both projects use the same three files).
+      # Throwaway values: these images are never published.
+      - name: Throwaway key, URL and signing key
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          python3 -c 'import secrets; print(secrets.token_hex(32))' > firmware/robot-token
+          echo 'wss://bot.example.com/botstack/v1' > firmware/bridge-url
+          python -m espsecure generate_signing_key --version 2 --scheme rsa3072 firmware/signing-key.pem >/dev/null
+      - name: Build ${{ matrix.project }}
+        shell: bash
+        working-directory: ${{ matrix.project }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh" >/dev/null
+          idf.py build

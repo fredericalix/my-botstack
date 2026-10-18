@@ -1,0 +1,12 @@
+# Name,   Type, SubType, Offset,   Size, Flags
+# The table sits at 0x10000 (CONFIG_PARTITION_TABLE_OFFSET), leaving the
+# bootloader 0x2000..0x10000. `nvs` is the firmware's own (its key);
+# `wifi_nvs` holds the Wi-Fi networks, written only by flash.sh from wifi.txt
+# and read-only for the firmware, so no update image carries a password.
+nvs,      data, nvs,     0x11000,  0x6000,
+otadata,  data, ota,     0x17000,  0x2000,
+phy_init, data, phy,     0x19000,  0x1000,
+wifi_nvs, data, nvs,     0x1a000,  0x6000,  readonly
+ota_0,    app,  ota_0,   0x20000,  8M,
+ota_1,    app,  ota_1,   ,         8M,
+coredump, data, coredump,,         64K,

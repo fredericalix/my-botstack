@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker>
+  </defs>
+  <rect width="960" height="560" fill="#ffffff"/>
+  <text x="480" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#111">botstack: who talks to whom</text>
+
+  <!-- Robot -->
+  <rect x="20" y="140" width="225" height="230" rx="16" fill="#fff4e8" stroke="#f08a24" stroke-width="2.5"/>
+  <circle cx="132" cy="200" r="34" fill="#f08a24"/>
+  <rect x="137" y="183" width="7" height="16" rx="3.5" fill="#fff" transform="rotate(-25 140 191)"/>
+  <rect x="151" y="178" width="6" height="14" rx="3" fill="#fff" transform="rotate(-25 154 185)"/>
+  <text x="132" y="262" text-anchor="middle" font-size="17" font-weight="700" fill="#111">StackChan robot</text>
+  <text x="132" y="284" text-anchor="middle" font-size="13" fill="#444">M5Stack CoreS3 · ESP32-S3</text>
+  <text x="132" y="310" text-anchor="middle" font-size="13" fill="#444">bloub face · mic · speaker</text>
+  <text x="132" y="330" text-anchor="middle" font-size="13" fill="#444">head servos · head touch · camera</text>
+  <text x="132" y="352" text-anchor="middle" font-size="12" fill="#b25f10">firmware: botstack (ota_1)</text>
+  <text x="132" y="394" text-anchor="middle" font-size="12" fill="#444">or the ESP32-P4 board:</text>
+  <text x="132" y="410" text-anchor="middle" font-size="12" fill="#444">round screen, no head, no camera</text>
+
+  <!-- Server -->
+  <rect x="335" y="100" width="290" height="290" rx="16" fill="none" stroke="#9aa7b8" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="340" y="92" font-size="11" fill="#6b7787">your server · Docker Compose, behind Caddy (HTTPS)</text>
+  <rect x="355" y="140" width="250" height="230" rx="14" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2.5"/>
+  <text x="480" y="172" text-anchor="middle" font-size="18" font-weight="700" fill="#111">botstack-bridge</text>
+  <text x="480" y="192" text-anchor="middle" font-size="12" fill="#2f6fdf">Rust · one container</text>
+  <text x="375" y="224" font-size="13" fill="#333">• robot protocol (botstack/v1)</text>
+  <text x="375" y="248" font-size="13" fill="#333">• voice shaping and pacing</text>
+  <text x="375" y="272" font-size="13" fill="#333">• robot tools (face, head, camera)</text>
+  <text x="375" y="296" font-size="13" fill="#333">• Grok Bot MCP endpoint, the lock</text>
+  <text x="375" y="320" font-size="13" fill="#333">• vision endpoint</text>
+  <text x="375" y="344" font-size="13" fill="#333">• robot key, pushes, metrics</text>
+
+  <!-- xAI -->
+  <rect x="700" y="90" width="230" height="96" rx="14" fill="#16181d" stroke="#16181d"/>
+  <text x="815" y="122" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">xAI realtime voice</text>
+  <text x="815" y="144" text-anchor="middle" font-size="12" fill="#cfd5df">grok-voice-3.0</text>
+  <text x="815" y="164" text-anchor="middle" font-size="12" fill="#cfd5df">answers every conversation</text>
+
+  <rect x="700" y="210" width="230" height="70" rx="14" fill="#2a2d35"/>
+  <text x="815" y="240" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">xAI TTS</text>
+  <text x="815" y="262" text-anchor="middle" font-size="12" fill="#cfd5df">verbatim speech, voice “eve”</text>
+
+  <rect x="700" y="304" width="230" height="70" rx="14" fill="#2a2d35"/>
+  <text x="815" y="334" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">grok-4.3 vision</text>
+  <text x="815" y="356" text-anchor="middle" font-size="12" fill="#cfd5df">describes camera photos</text>
+
+  <!-- Grok Bot -->
+  <rect x="355" y="448" width="250" height="84" rx="14" fill="#f1ebff" stroke="#7c4dff" stroke-width="2.5"/>
+  <text x="480" y="480" text-anchor="middle" font-size="16" font-weight="700" fill="#111">Grok Bot</text>
+  <text x="480" y="502" text-anchor="middle" font-size="12" fill="#5b3cc4">optional: any agent with</text>
+  <text x="480" y="518" text-anchor="middle" font-size="12" fill="#5b3cc4">a webhook and MCP</text>
+
+  <!-- arrows robot <-> bridge -->
+  <line x1="247" y1="230" x2="352" y2="230" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="352" y1="270" x2="247" y2="270" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+  <text x="300" y="220" text-anchor="middle" font-size="11" fill="#333">mic, 16 kHz</text>
+  <text x="300" y="290" text-anchor="middle" font-size="11" fill="#333">voice, 24 kHz</text>
+  <text x="300" y="306" text-anchor="middle" font-size="11" fill="#333">state · face · tools</text>
+  <text x="300" y="254" text-anchor="middle" font-size="11" font-weight="700" fill="#2f6fdf">wss · Opus</text>
+  <text x="300" y="326" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2f6fdf">robot key (Bearer)</text>
+
+  <!-- bridge <-> xAI -->
+  <line x1="607" y1="150" x2="697" y2="128" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="697" y1="150" x2="607" y2="172" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+  <text x="662" y="116" text-anchor="middle" font-size="11" fill="#333">PCM 16 kHz</text>
+  <text x="662" y="192" text-anchor="middle" font-size="11" fill="#333">PCM 24 kHz</text>
+  <line x1="607" y1="245" x2="697" y2="245" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="607" y1="335" x2="697" y2="335" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- bridge <-> Grok Bot -->
+  <line x1="450" y1="372" x2="450" y2="445" stroke="#7c4dff" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="510" y1="445" x2="510" y2="372" stroke="#7c4dff" stroke-width="2" marker-end="url(#a)"/>
+  <text x="442" y="424" text-anchor="end" font-size="11" fill="#5b3cc4">webhook: question</text>
+  <text x="518" y="410" font-size="11" fill="#5b3cc4">MCP: stackchan_reply, _say</text>
+  <text x="518" y="425" font-size="11" fill="#5b3cc4">MCP: stackchan_photo</text>
+  <text x="518" y="440" font-size="11" fill="#5b3cc4">MCP: stackchan_lock</text>
+
+  <!-- Admin AI -->
+  <rect x="700" y="448" width="230" height="84" rx="14" fill="#f3f4f6" stroke="#9aa7b8" stroke-width="2.5"/>
+  <text x="815" y="478" text-anchor="middle" font-size="16" font-weight="700" fill="#111">Admin AI</text>
+  <text x="815" y="500" text-anchor="middle" font-size="12" fill="#444">Claude Code, any MCP client,</text>
+  <text x="815" y="516" text-anchor="middle" font-size="12" fill="#444">or scripts/fleet.sh</text>
+  <line x1="760" y1="446" x2="609" y2="362" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+  <text x="735" y="404" font-size="11" fill="#333">MCP: /fleet/mcp</text>
+  <text x="752" y="419" font-size="11" fill="#333">approve, lock, rename…</text>
+</svg>

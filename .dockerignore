@@ -1,0 +1,9 @@
+target
+out
+.git
+# Secrets and sources the image does not need stay out of the build context.
+.env
+.env.*
+firmware
+firmware-p4
+.superpowers

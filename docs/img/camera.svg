@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 450" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect width="1000" height="450" fill="#fff"/>
+<text x="500.0" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#111">“What do you see?” — the camera tool</text>
+<rect x="20" y="90" width="170" height="76" rx="12" fill="#16181d" stroke="#16181d" stroke-width="2"/>
+<text x="105.0" y="109.0" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Realtime voice</text>
+<text x="105.0" y="128.0" text-anchor="middle" font-size="12" fill="#cfd5df">says “Let me look”,</text>
+<text x="105.0" y="145.0" text-anchor="middle" font-size="12" fill="#cfd5df">take_photo(question)</text>
+<rect x="250" y="90" width="210" height="76" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="355.0" y="109.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">Bridge</text>
+<text x="355.0" y="128.0" text-anchor="middle" font-size="12" fill="#444">tool request</text>
+<text x="355.0" y="145.0" text-anchor="middle" font-size="12" fill="#444">camera.take_photo</text>
+<rect x="530" y="90" width="200" height="76" rx="12" fill="#fff4e8" stroke="#f08a24" stroke-width="2"/>
+<text x="630.0" y="109.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">Robot camera</text>
+<text x="630.0" y="128.0" text-anchor="middle" font-size="12" fill="#444">eyes wide, shutter click,</text>
+<text x="630.0" y="145.0" text-anchor="middle" font-size="12" fill="#444">GC0308 → JPEG 320×240</text>
+<rect x="530" y="270" width="200" height="76" rx="12" fill="#eaf1ff" stroke="#2f6fdf" stroke-width="2"/>
+<text x="630.0" y="289.0" text-anchor="middle" font-size="13" font-weight="700" fill="#111">/mcp/vision/explain</text>
+<text x="630.0" y="308.0" text-anchor="middle" font-size="12" fill="#444">on the bridge, checks</text>
+<text x="630.0" y="325.0" text-anchor="middle" font-size="12" fill="#444">the Bearer token</text>
+<rect x="790" y="270" width="190" height="76" rx="12" fill="#16181d" stroke="#16181d" stroke-width="2"/>
+<text x="885.0" y="289.0" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">grok-4.3</text>
+<text x="885.0" y="308.0" text-anchor="middle" font-size="12" fill="#cfd5df">describes the photo in</text>
+<text x="885.0" y="325.0" text-anchor="middle" font-size="12" fill="#cfd5df">the device's language, 3–5 s</text>
+<line x1="192" y1="118" x2="248" y2="118" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="220.0" y="112.0" text-anchor="middle" font-size="12" fill="#222">1</text>
+<line x1="462" y1="118" x2="528" y2="118" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="495.0" y="112.0" text-anchor="middle" font-size="12" fill="#222">2</text>
+<line x1="600" y1="168" x2="600" y2="268" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="592.0" y="212.0" text-anchor="end" font-size="12" fill="#222">3. POST photo</text>
+<text x="592.0" y="227.0" text-anchor="end" font-size="12" fill="#222">+ question</text>
+<line x1="732" y1="300" x2="788" y2="300" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="760.0" y="294.0" text-anchor="middle" font-size="12" fill="#222">4</text>
+<line x1="788" y1="322" x2="732" y2="322" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<text x="760.0" y="340.0" text-anchor="middle" font-size="12" fill="#222">5. text</text>
+<line x1="660" y1="268" x2="660" y2="168" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<text x="668.0" y="212.0" text-anchor="start" font-size="12" fill="#222">6. HTTP response</text>
+<text x="668.0" y="227.0" text-anchor="start" font-size="12" fill="#222">= the text</text>
+<line x1="528" y1="146" x2="462" y2="146" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<text x="495.0" y="166.0" text-anchor="middle" font-size="12" fill="#222">7. tool_result</text>
+<line x1="248" y1="146" x2="192" y2="146" stroke="#2f6fdf" stroke-width="2" marker-end="url(#a)"/>
+<text x="220" y="186" text-anchor="middle" font-size="12" font-weight="400" fill="#222">8. function output</text>
+<text x="20" y="390" text-anchor="start" font-size="12.5" font-weight="400" fill="#444">The robot learns the vision URL (HTTPS only) and a per-process token from the bridge's hello; nothing else may post photos.</text>
+<text x="20" y="410" text-anchor="start" font-size="12.5" font-weight="400" fill="#444">A Grok Bot photo takes the same road with the question botstack-photo:‹key›: the bridge returns the JPEG to Grok Bot instead.</text>
+<text x="20" y="430" text-anchor="start" font-size="12.5" font-weight="400" fill="#444">Head moves are tool requests too: the robot answers at once (“Done.” or “The head does not answer.”); the bridge waits ≤ 3 s.</text>
+</svg>

@@ -1,0 +1,14 @@
+# Caddy in front of the bridge (compose.yaml). It gets and renews the
+# certificate for BOTSTACK_DOMAIN, passes WebSocket upgrades through, and sets
+# X-Forwarded-For (the bridge records it as the device's address).
+{$BOTSTACK_DOMAIN} {
+	# The robots (link, firmware updates, photos), Grok Bot, and the fleet admin.
+	@bridge path /botstack/v1* /grok/* /fleet/* /mcp/*
+	handle @bridge {
+		reverse_proxy bridge:8080
+	}
+	# Everything else, /healthz and /metrics included, stays inside.
+	handle {
+		respond 404
+	}
+}
