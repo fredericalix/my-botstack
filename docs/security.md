@@ -101,7 +101,7 @@ Never print a key, a token or the webhook URL; report only whether it is set and
 length. On the server they live in `.env` (gitignored, mode 600, written by
 `scripts/setup.sh`): `XAI_API_KEY`, `ROBOT_TOKEN` (the bootstrap key), `FLEET_ADMIN_TOKEN`,
 `GROK_BRIDGE_TOKEN`, `GROK_BOT_WEBHOOK_URL`, `GROK_BOT_WEBHOOK_TOKEN`. The bridge refuses
-an `http://` webhook URL unless `GROK_BOT_WEBHOOK_ALLOW_HTTP=1`, so the webhook key is
+an `http://` webhook URL unless `GROK_BOT_WEBHOOK_ALLOW_HTTP` is `1`, `true`, or `yes`, so the webhook key is
 not sent in clear by mistake. `.dockerignore`
 keeps `.env` (and `.env.*`) out of the image's build context; compose hands the values to
 the bridge as its environment.

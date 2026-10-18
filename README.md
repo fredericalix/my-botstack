@@ -1,10 +1,6 @@
 # my-botstack
 
-> **TODO(owner):** add a photo or a 10-second GIF of the robot answering out loud
-> (for example, “what's on my calendar?”). Use the same file for the X post and for
-> the repository social preview. Suggested path: `docs/img/robot-answering.gif`.
-> Replace this note with
-> `![The robot answering](docs/img/robot-answering.gif)`.
+![Who talks to whom](docs/img/architecture.svg)
 
 A StackChan robot, or a round Waveshare screen, that you host yourself and talk to.
 
@@ -17,8 +13,6 @@ This repository is **my-botstack**. The bridge, the firmware and the device prot
 xAI is the only outside service in the path: the realtime voice, text to speech, vision, and Grok Bot. The bridge has to be reachable from the internet: the devices and Grok Bot both call it. It keeps their always-on link, shapes the voice for the small speakers, runs the tools (face, head, camera) and lets an AI manage the fleet over MCP.
 
 **Start here: [QUICKSTART.md](QUICKSTART.md)**, from an empty server to a talking robot. Count about an hour, most of it waiting for builds.
-
-![Who talks to whom](docs/img/architecture.svg)
 
 ## What works
 

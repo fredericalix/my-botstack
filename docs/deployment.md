@@ -84,9 +84,9 @@ do not leave a numeric setting empty, an empty value is not the default.
 | `ROBOT_TOKEN` | the bootstrap key, the same as `firmware/robot-token` ([security](security.md)) |
 | `FLEET_ADMIN_TOKEN` | the admin MCP's token (`/fleet/mcp`, `scripts/fleet.sh`); unset, `/fleet/mcp` answers 503 |
 | `GROK_BRIDGE_TOKEN` | Grok Bot's token on `/grok/mcp` and `/grok/callback`; unset, both refuse everyone |
-| `GROK_BOT_WEBHOOK_URL` | where questions for Grok Bot are posted. Empty: there is no Grok Bot ([Grok Bot](grok-bot.md)). Must be `https://`. An `http://` URL is refused at start, because the webhook key would travel in clear; `GROK_BOT_WEBHOOK_ALLOW_HTTP=1` allows it for a local bridge and the log warns |
+| `GROK_BOT_WEBHOOK_URL` | where questions for Grok Bot are posted. Empty: there is no Grok Bot ([Grok Bot](grok-bot.md)). Must be `https://`. An `http://` URL is refused at start, because the webhook key would travel in clear; `GROK_BOT_WEBHOOK_ALLOW_HTTP` set to `1`, `true`, or `yes` allows it for a local bridge and the log warns |
 | `GROK_BOT_WEBHOOK_TOKEN` | sent as `Authorization: Bearer` with each webhook. **Required** for a Grok Bot routine (it rejects the post without the key). Leave it empty only when the URL is empty, or when another agent does not use a bearer token |
-| `GROK_BOT_WEBHOOK_ALLOW_HTTP` | unset means off. Set to `1` only for local development, to allow an `http://` webhook URL |
+| `GROK_BOT_WEBHOOK_ALLOW_HTTP` | unset means off. `1`, `true`, or `yes` allow an `http://` webhook URL, for local development only. Any other value leaves it off |
 
 The bridge never logs a secret, only whether each one is set (and the bootstrap key's
 length): look for the `configuration` line in `docker compose logs bridge`.
@@ -100,7 +100,7 @@ length): look for the `configuration` line in `docker compose logs bridge`.
 | `DEFAULT_LANGUAGE` | `en` | ISO 639-1 language of new devices; each device can be changed with `fleet_set_profile` |
 | `GROK_BOT_SCOPE` | `their accounts, mail, calendar and files` | what Grok Bot can reach, as the voice describes it |
 | `KEYTERMS` | empty | comma list of words the speech recognition should expect (names) |
-| `GROK_DEVICE_ID` | empty | a MAC approved from the first start, without `fleet_approve`, and Grok Bot's default device. When empty, the only approved device is the default; with several approved devices and no value here, a reply that names no device is refused |
+| `GROK_DEVICE_ID` | empty | a MAC approved from the first start, without `fleet_approve`. A reply goes to the `device_id` it names, else to this MAC while it is approved, else (when this is empty) to the only approved device. With no approved default, a reply that names no device is refused and not queued |
 | `GROK_DEVICE_NAME` | `stackchan` | the name of that device |
 
 ### Voice and limits
@@ -114,7 +114,7 @@ length): look for the `configuration` line in `docker compose logs bridge`.
 | `XAI_REALTIME_URL` | `wss://api.x.ai/v1/realtime` | realtime endpoint |
 | `MAX_CONVERSATIONS` | `3` | simultaneous xAI sessions, all devices together ([fleet](fleet.md#4-conversation-cap)) |
 | `IDLE_CLOSE_SECONDS` | `40` | close a silent conversation |
-| `GROK_BOT_REPLY_TIMEOUT` | `180` | seconds to wait for `stackchan_reply` after the webhook accepts the question; then the robot says Grok Bot did not answer. At least 1. `0` stops the bridge at start |
+| `GROK_BOT_REPLY_TIMEOUT` | `180` | seconds to wait for `stackchan_reply` after the webhook accepts the question; then the robot says Grok Bot did not answer. From 1 to 3600 (a request is kept for one hour). `0` or a larger value stops the bridge at start |
 
 ### Inside the container
 

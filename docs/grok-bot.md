@@ -21,19 +21,12 @@ the robot say it is not configured.
 
 The same steps as the [quickstart](../QUICKSTART.md#connect-grok-bot).
 
-You need the Grok Bot app. The exact labels on its screens are not written down here,
-because they change; the steps stay generic. Two screenshots belong in this section,
-taken on the account that will use the robot:
+You need the Grok Bot app. The steps below say what to enter. They do not name
+menus: those labels change from one version of the app to the next.
 
-> **TODO(owner) — screenshot 1.** The Grok Bot app while adding a custom remote MCP
-> server, showing the URL and the `Authorization` header. Replace this note with the
-> image.
->
-> **TODO(owner) — screenshot 2.** The routine's webhook URL and its key, the two values
-> copied into `.env` below. Replace this note with the image.
-
-1. **Add the bridge in the Grok Bot app as a custom remote MCP server.** This is not a
-   connector on grok.com: those connectors use OAuth, and the bridge does not.
+1. **Add the bridge in the Grok Bot app as a custom remote MCP server.** The
+   bridge authenticates with the bearer token below. It does not speak OAuth,
+   so a connector that requires OAuth cannot be used.
    - URL: `https://<your domain>/grok/mcp`
    - HTTP header: `Authorization` with the value `Bearer <GROK_BRIDGE_TOKEN>`
    - `scripts/setup.sh` never prints that token. On the server:
@@ -42,20 +35,22 @@ taken on the account that will use the robot:
      grep '^GROK_BRIDGE_TOKEN=' .env | cut -d= -f2-
      ```
 
-   Leave any OAuth client id and secret empty. It is MCP over streamable HTTP (POST
-   only, JSON answers). The plugin is shared by every Bot on the account. The routine
-   runs unattended: the instruction below names the tools, so the Bot can call them
-   without a person approving each call.
+   If the app shows OAuth client fields, leave them empty: the bridge does not
+   use them. It is MCP over streamable HTTP (POST only, JSON answers). The
+   plugin is shared by every Bot on the account. The bridge answers a tool
+   call as soon as it arrives; it does not wait for a person to approve it.
+   The instruction below names the tools so the routine can call them.
 2. **Create a Grok Bot routine with a webhook trigger.** The simplest way is to ask the
    Bot, in chat, to create a routine triggered by a webhook and to use the instruction
    in the next step. Then copy the routine's webhook URL into `GROK_BOT_WEBHOOK_URL`
    and its key into `GROK_BOT_WEBHOOK_TOKEN`. The key is **required**: a Grok Bot
    routine rejects the post without `Authorization: Bearer <key>`, and the robot then
    says that Grok Bot did not accept the question. This has to be a Grok Bot routine.
-   A grok.com Automation signs its webhook instead
-   ([webhook triggers](https://docs.x.ai/grok/automations/webhooks): `webhook-id`,
-   `webhook-timestamp`, `webhook-signature`). The bridge does not add those headers, so
-   an Automation does not work here. Describe what Grok Bot can reach in
+   The bridge sends `Authorization: Bearer` and does not add `webhook-id`,
+   `webhook-timestamp` or `webhook-signature`. A webhook that requires those
+   signatures, such as a grok.com Automation
+   ([webhook triggers](https://docs.x.ai/grok/automations/webhooks)), does not
+   work here. Describe what Grok Bot can reach in
    `GROK_BOT_SCOPE`, then `docker compose up -d`. Set `GROK_DEVICE_ID` after you
    approve a device (the Approve the device step).
 3. **Paste this instruction into the routine.** It tells the Bot to answer read-only
@@ -102,8 +97,8 @@ taken on the account that will use the robot:
 
    If the robot stays silent, open the Bot's chat and see what the run did: usually the
    plugin was missing, or `stackchan_reply` was not called. If no reply arrives within
-   `GROK_BOT_REPLY_TIMEOUT` seconds (180 by default), the robot says that Grok Bot did
-   not answer.
+   `GROK_BOT_REPLY_TIMEOUT` seconds (180 by default, from 1 to 3600), the robot says
+   that Grok Bot did not answer. If it has disconnected, that line is dropped.
 
    **The reply path**, without waiting for the routine (expect
    `{"ok":true,"delivery":"spoken"}` when that device is online, or `"queued"` when it
@@ -147,20 +142,23 @@ questions an hour).
    offline, the answer waits in `grok_pending.json` and is spoken as soon as it
    reconnects.
 5. If no `stackchan_reply` arrives within `GROK_BOT_REPLY_TIMEOUT` (180 seconds by
-   default, counted from the moment the webhook accepts the question), the robot says
-   that Grok Bot did not answer. A reply that arrives after that line is still spoken.
-   The wait dies with the bridge process.
+   default, from 1 to 3600, counted from the moment the webhook accepts the question),
+   the robot says that Grok Bot did not answer. A reply that arrives after that line
+   is still spoken. If the robot has disconnected, that line is dropped: it is the
+   bridge's own apology, and it is not saved for the next connection. The wait dies
+   with the bridge process.
 
-A reply whose `request_id` is unknown (bridge restart, older than an hour) goes to
-`GROK_DEVICE_ID` when that is set, or to the `device_id` it names. When
-`GROK_DEVICE_ID` is unset and exactly one device is approved, that device is the
-default. Otherwise the bridge answers `unknown request and no default device` and does
-not queue the text. A `device_id` that is not an approved device is refused, for replies
-as for pushes. Texts are cut at 500 characters.
+A reply is delivered to the first device that applies: the `device_id` on the reply,
+then the device remembered with that `request_id`, then `GROK_DEVICE_ID` when that
+device is approved, then the only approved device when `GROK_DEVICE_ID` is unset.
+A reply that names no device, and has no approved default, is refused with
+`unknown request and no default device` and is not queued. The bridge does not queue
+a reply for a device that is not approved, including one revoked after the question
+was asked. Texts are cut at 500 characters.
 
 The bridge refuses to start when `GROK_BOT_WEBHOOK_URL` is `http://`, because the
-webhook key would travel in clear. `GROK_BOT_WEBHOOK_ALLOW_HTTP=1` allows it, for a
-local bridge only; the log then warns once.
+webhook key would travel in clear. `GROK_BOT_WEBHOOK_ALLOW_HTTP` set to `1`, `true`,
+or `yes` allows it, for a local bridge only; the log then warns once.
 
 ## Pushing (B)
 

@@ -143,7 +143,8 @@ Grok Bot everything it cannot see (“what is on my calendar today?”, “did t
 finish?”); Grok Bot works, then its answer is read out loud on the device. Grok Bot can
 also make a device speak at any time, look through a StackChan's camera, list the
 devices or lock them.
-[Routines](https://docs.x.ai/grok-bot/skills-routines-and-automations).
+How a routine is created is described in
+[Skills and routines](https://docs.x.ai/grok-bot/skills-routines-and-automations).
 
 > **The bridge must be on the internet.** Grok Bot calls the bridge's MCP endpoint
 > `https://<your domain>/grok/mcp`, and the bridge calls Grok Bot's webhook. A bridge on
@@ -151,19 +152,12 @@ devices or lock them.
 > reached. Check from outside your network (a phone on mobile data will do):
 > `https://<your domain>/grok/health` must answer `{"ok":true}`.
 
-You need the Grok Bot app. The exact labels on its screens are not written down here,
-because they change; the steps stay generic. Two screenshots belong in this section,
-taken on the account that will use the robot:
+You need the Grok Bot app. The steps below say what to enter. They do not name
+menus: those labels change from one version of the app to the next.
 
-> **TODO(owner) — screenshot 1.** The Grok Bot app while adding a custom remote MCP
-> server, showing the URL and the `Authorization` header. Replace this note with the
-> image.
->
-> **TODO(owner) — screenshot 2.** The routine's webhook URL and its key, the two values
-> copied into `.env` below. Replace this note with the image.
-
-1. **Add the bridge in the Grok Bot app as a custom remote MCP server.** This is not a
-   connector on grok.com: those connectors use OAuth, and the bridge does not.
+1. **Add the bridge in the Grok Bot app as a custom remote MCP server.** The
+   bridge authenticates with the bearer token below. It does not speak OAuth,
+   so a connector that requires OAuth cannot be used.
    - URL: `https://<your domain>/grok/mcp`
    - HTTP header: `Authorization` with the value `Bearer <GROK_BRIDGE_TOKEN>`
    - `scripts/setup.sh` never prints that token. On the server:
@@ -172,20 +166,22 @@ taken on the account that will use the robot:
      grep '^GROK_BRIDGE_TOKEN=' .env | cut -d= -f2-
      ```
 
-   Leave any OAuth client id and secret empty. It is MCP over streamable HTTP (POST
-   only, JSON answers). The plugin is shared by every Bot on the account. The routine
-   runs unattended: the instruction below names the tools, so the Bot can call them
-   without a person approving each call.
+   If the app shows OAuth client fields, leave them empty: the bridge does not
+   use them. It is MCP over streamable HTTP (POST only, JSON answers). The
+   plugin is shared by every Bot on the account. The bridge answers a tool
+   call as soon as it arrives; it does not wait for a person to approve it.
+   The instruction below names the tools so the routine can call them.
 2. **Create a Grok Bot routine with a webhook trigger.** The simplest way is to ask the
    Bot, in chat, to create a routine triggered by a webhook and to use the instruction
    in the next step. Then copy the routine's webhook URL into `GROK_BOT_WEBHOOK_URL`
    and its key into `GROK_BOT_WEBHOOK_TOKEN`. The key is **required**: a Grok Bot
    routine rejects the post without `Authorization: Bearer <key>`, and the robot then
    says that Grok Bot did not accept the question. This has to be a Grok Bot routine.
-   A grok.com Automation signs its webhook instead
-   ([webhook triggers](https://docs.x.ai/grok/automations/webhooks): `webhook-id`,
-   `webhook-timestamp`, `webhook-signature`). The bridge does not add those headers, so
-   an Automation does not work here. Describe what Grok Bot can reach in
+   The bridge sends `Authorization: Bearer` and does not add `webhook-id`,
+   `webhook-timestamp` or `webhook-signature`. A webhook that requires those
+   signatures, such as a grok.com Automation
+   ([webhook triggers](https://docs.x.ai/grok/automations/webhooks)), does not
+   work here. Describe what Grok Bot can reach in
    `GROK_BOT_SCOPE`, then `docker compose up -d`. Set `GROK_DEVICE_ID` after you
    approve a device (the Approve the device step).
 3. **Paste this instruction into the routine.** It tells the Bot to answer read-only
@@ -232,8 +228,8 @@ taken on the account that will use the robot:
 
    If the robot stays silent, open the Bot's chat and see what the run did: usually the
    plugin was missing, or `stackchan_reply` was not called. If no reply arrives within
-   `GROK_BOT_REPLY_TIMEOUT` seconds (180 by default), the robot says that Grok Bot did
-   not answer.
+   `GROK_BOT_REPLY_TIMEOUT` seconds (180 by default, from 1 to 3600), the robot says
+   that Grok Bot did not answer. If it has disconnected, that line is dropped.
 
    **The reply path**, without waiting for the routine (expect
    `{"ok":true,"delivery":"spoken"}` when that device is online, or `"queued"` when it
@@ -254,17 +250,21 @@ The bridge posts each question as JSON:
 {
   "request_id": "6f1c…",
   "question": "What is on my calendar today?",
-  "device_id": "<device-name>",
-  "device_name": "<device-name>",
+  "device_id": "02:00:00:00:00:01",
+  "device_name": "desk",
   "language": "en",
   "reply_via": "mcp:stackchan_reply"
 }
 ```
 
-Grok Bot answers by calling the MCP tool `stackchan_reply` with the same `request_id` and a
-`text`. Without MCP, `POST https://<your domain>/grok/callback` with the same bearer header
-and the body `{"request_id": "…", "text": "…", "device_id": "…"}` does the same. The tools
-keep the `stackchan_` prefix and work with every approved device, the P4 board included.
+`device_id` is the device's MAC address. `device_name` is the name from the fleet
+(`desk` here is an example).
+
+Grok Bot answers by calling the MCP tool `stackchan_reply` with the same `request_id`
+and a `text`. Without MCP, `POST https://<your domain>/grok/callback` with the same
+bearer header and the body `{"request_id": "…", "text": "…", "device_id": "…"}` does
+the same. The tools keep the `stackchan_` prefix and work with every approved device,
+the P4 board included.
 
 The other tools: `stackchan_say` (make a device speak at any time), `stackchan_photo` (a
 photo from a device that has a camera, as an image), `stackchan_lock` and
@@ -437,11 +437,11 @@ you just approved (lowercase), then `docker compose up -d`:
 GROK_DEVICE_ID=02:00:00:00:00:01
 ```
 
-If you leave
-`GROK_DEVICE_ID` empty and exactly one device is approved, the bridge uses that device.
-With two or more approved devices and no `GROK_DEVICE_ID`, a reply that names no device
-is refused (`unknown request and no default device`) instead of being reported as queued
-for a robot that will never hear it.
+A reply goes to the `device_id` it names, then to `GROK_DEVICE_ID` when that device
+is approved, then (when `GROK_DEVICE_ID` is empty) to the only approved device.
+With two or more approved devices and no `GROK_DEVICE_ID`, or with `GROK_DEVICE_ID`
+set to a device that is not approved, a reply that names no device is refused
+(`unknown request and no default device`) and is not queued.
 
 ## Talk
 
@@ -560,8 +560,9 @@ internet.
 
 **The bridge does not start.** `docker compose logs bridge`: an unknown `TIMEZONE`, a bad
 `DEFAULT_LANGUAGE`, an empty numeric setting (comment the line out instead),
-`GROK_BOT_REPLY_TIMEOUT=0`, or an `http://` `GROK_BOT_WEBHOOK_URL` (use `https://`, or
-`GROK_BOT_WEBHOOK_ALLOW_HTTP=1` only on a local bridge) stop it with a message.
+`GROK_BOT_REPLY_TIMEOUT` outside 1 to 3600, or an `http://` `GROK_BOT_WEBHOOK_URL`
+(use `https://`, or `GROK_BOT_WEBHOOK_ALLOW_HTTP` set to `1`, `true`, or `yes` only
+on a local bridge) stop it with a message.
 
 **The bridge logs `XAI_API_KEY is not set`.** Conversations, photos and speech fail: set
 the key in `.env` (or run `scripts/setup.sh` again), then `docker compose up -d`.
@@ -604,13 +605,14 @@ minute.
 - “Can't reach”: the webhook did not answer within 8 s.
 - The robot says “Grok Bot didn't answer”: the webhook accepted the question, but no
   `stackchan_reply` arrived within `GROK_BOT_REPLY_TIMEOUT` (180 s unless you changed
-  it). Open the Bot's chat. Usual causes: the routine is paused, the plugin is not
-  available to the Bot, or the run never called `stackchan_reply` with the `request_id`.
-- A reply for an unknown `request_id` that also omits `device_id` is refused when
-  `GROK_DEVICE_ID` is unset and it is not the case that exactly one device is approved.
-  The tool answers `unknown request and no default device`; it does not say `queued`.
-  The same reply can be spoken on another device when a default is set and `device_id`
-  was left out.
+  it; 1 to 3600). Open the Bot's chat. Usual causes: the routine is paused, the plugin
+  is not available to the Bot, or the run never called `stackchan_reply` with the
+  `request_id`. If the robot has disconnected, that line is dropped.
+- A reply goes to the `device_id` it names, then to the device that asked, then to
+  `GROK_DEVICE_ID` when that device is approved, then to the only approved device
+  when `GROK_DEVICE_ID` is unset. With no approved default the tool answers
+  `unknown request and no default device` and does not say `queued`. A device that
+  is not approved, including one revoked after the question, is not a queue.
 - The plugin has to reach `https://<your domain>/grok/mcp` from the internet with
   `GROK_BRIDGE_TOKEN`. `/grok/health` from outside your network only shows that the
   path is open; it does not check the token or the routine.
@@ -666,6 +668,6 @@ key in `--out`), `--stay 40` (wait for pushes). `out/` is gitignored. Without
 `GROK_DEVICE_ID`, the fake robot stays pending until you approve it through `/fleet/mcp`
 (set `FLEET_ADMIN_TOKEN` too, and use `scripts/fleet.sh` with
 `BOTSTACK_URL=http://127.0.0.1:8080` and that token in `.env`). An `http://`
-`GROK_BOT_WEBHOOK_URL` is refused unless `GROK_BOT_WEBHOOK_ALLOW_HTTP=1`.
+`GROK_BOT_WEBHOOK_URL` is refused unless `GROK_BOT_WEBHOOK_ALLOW_HTTP` is `1`, `true`, or `yes`.
 
 [AGENTS.md](AGENTS.md) has the rules for changing the code.

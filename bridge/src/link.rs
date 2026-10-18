@@ -74,8 +74,8 @@ fn apology(language: &str) -> &'static str {
 }
 
 /// Said when a Grok Bot routine accepts the question and then never calls
-/// `stackchan_reply`. Not kept as one of Grok Bot's own messages: if the link
-/// is already gone, `ask_grok_bot` queues it for the next connection.
+/// `stackchan_reply`. The bridge's own line: if the link is already gone, it
+/// is dropped, not kept for the next connection.
 fn grok_bot_silent(language: &str) -> &'static str {
     say(language, "Grok Bot n'a pas répondu.", "Grok Bot didn't answer.")
 }
@@ -963,7 +963,6 @@ impl Link {
         let language = profile.language;
         let commands = self.commands.clone();
         let timeout = grokbot.reply_timeout();
-        let device_id = self.device_id.clone();
         tokio::spawn(async move {
             if let Err(reason) = grokbot.post_webhook(payload, &language).await {
                 grokbot.forget(&request_id);
@@ -975,10 +974,9 @@ impl Link {
                 return;
             }
             let text = grok_bot_silent(&language).to_string();
-            if commands.send(Command::Say { text: text.clone(), kind: Kind::Reply }).is_err() {
-                // The link has gone. Queue the line for the next connection.
-                let _ = grokbot.accept(None, &text, Some(&device_id), Kind::Reply);
-            }
+            // The bridge's own apology. A closed link drops it: it is not one
+            // of Grok Bot's messages, so it is not written to grok_pending.json.
+            let _ = commands.send(Command::Say { text, kind: Kind::Reply });
         });
         "The question was sent to Grok Bot. Tell them in a few words that you are asking it; \
          its answer will be read out later by itself."
@@ -1385,7 +1383,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn silence_is_kept_when_the_robot_is_already_gone() {
+    async fn silence_is_dropped_when_the_robot_is_already_gone() {
         let dir = tempfile::tempdir().unwrap();
         let app = app_waiting(dir.path(), Duration::from_millis(40));
         let (out, _outgoing) = mpsc::unbounded_channel();
@@ -1395,7 +1393,7 @@ mod tests {
         assert!(link.ask_grok_bot("hello").contains("sent to Grok Bot"));
         drop(incoming);
         tokio::time::sleep(Duration::from_millis(300)).await;
-        assert_eq!(app.grokbot.take_pending(MAC), vec!["Grok Bot didn't answer."]);
+        assert!(app.grokbot.take_pending(MAC).is_empty());
     }
 
     #[test]
