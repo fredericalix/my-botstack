@@ -10,8 +10,10 @@ use tokio::sync::mpsc;
 use crate::grokbot::{Kind, Speaker};
 
 pub enum Command {
-    /// A Grok Bot reply or pushed message for this conversation.
-    Say { text: String, kind: Kind },
+    /// Text for this device. `keep` is false for a line of the bridge's own
+    /// (an apology): it is said while the link is up, and dropped if the robot
+    /// goes away before playback. Grok Bot's words use `keep: true`.
+    Say { text: String, kind: Kind, keep: bool },
     /// Verbatim speech is ready (see `speech`). `epoch` drops it after a tap.
     Played { epoch: u64, pcm: Vec<i16>, texts: Vec<String> },
     /// Take a photo for Grok Bot; the upload carries `key` (see `App::take_photo`).
@@ -72,7 +74,7 @@ impl Hub {
 
 impl Speaker for Hub {
     fn speak(&self, device_id: &str, _request_id: Option<&str>, text: &str, kind: Kind) -> bool {
-        self.send(device_id, Command::Say { text: text.to_string(), kind })
+        self.send(device_id, Command::Say { text: text.to_string(), kind, keep: true })
     }
 }
 

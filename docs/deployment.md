@@ -100,7 +100,7 @@ length): look for the `configuration` line in `docker compose logs bridge`.
 | `DEFAULT_LANGUAGE` | `en` | ISO 639-1 language of new devices; each device can be changed with `fleet_set_profile` |
 | `GROK_BOT_SCOPE` | `their accounts, mail, calendar and files` | what Grok Bot can reach, as the voice describes it |
 | `KEYTERMS` | empty | comma list of words the speech recognition should expect (names) |
-| `GROK_DEVICE_ID` | empty | a MAC approved from the first start, without `fleet_approve`. A reply goes to the `device_id` it names, else to this MAC while it is approved, else (when this is empty) to the only approved device. With no approved default, a reply that names no device is refused and not queued |
+| `GROK_DEVICE_ID` | empty | a MAC approved from the first start, without `fleet_approve`. A reply goes to the `device_id` it names, else to the device that asked, else to this MAC while it is approved, else (when this is empty) to the only approved device. `stackchan_say` and `stackchan_photo` without `device_id` use this MAC only; they do not use the only approved device. With no approved default, a reply that names no device is refused and not queued |
 | `GROK_DEVICE_NAME` | `stackchan` | the name of that device |
 
 ### Voice and limits

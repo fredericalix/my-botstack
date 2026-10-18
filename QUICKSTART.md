@@ -441,7 +441,10 @@ A reply goes to the `device_id` it names, then to `GROK_DEVICE_ID` when that dev
 is approved, then (when `GROK_DEVICE_ID` is empty) to the only approved device.
 With two or more approved devices and no `GROK_DEVICE_ID`, or with `GROK_DEVICE_ID`
 set to a device that is not approved, a reply that names no device is refused
-(`unknown request and no default device`) and is not queued.
+(`unknown request and no default device`) and is not queued. `stackchan_say` and
+`stackchan_photo` do not use that only-device fallback: without `device_id` they
+need an approved `GROK_DEVICE_ID`, and otherwise the answer is `unknown device`.
+`stackchan_lock` without `device_id` still applies to the whole fleet.
 
 ## Talk
 

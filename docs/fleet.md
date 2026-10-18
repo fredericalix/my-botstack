@@ -154,13 +154,16 @@ change; a `device_id` is a name or a MAC.
 | `stackchan_reply` | unchanged; follows `request_id` to the device that asked |
 
 Without `device_id`, `stackchan_say` and `stackchan_photo` go to `GROK_DEVICE_ID` when
-that device is approved. When `GROK_DEVICE_ID` is unset they go to the only approved
-device, and the answer is "unknown device" if there are several or none. A
-`stackchan_reply` follows the same default when the request is unknown and the reply
-names no `device_id`. An explicit `device_id` on the reply wins over
+that device is approved. They do not fall back to the only approved device: the
+answer is "unknown device" when `GROK_DEVICE_ID` is unset or that device is not
+approved. `stackchan_lock` without `device_id` is the whole fleet.
+A `stackchan_reply` for an unknown request with no `device_id` goes to
+`GROK_DEVICE_ID` when that device is approved, and, when `GROK_DEVICE_ID` is unset,
+to the only approved device. An explicit `device_id` on the reply wins over
 `GROK_DEVICE_ID`. The reply is refused (`unknown request and no default device`)
 when there is no approved default, and it is not queued. A device that is not
-approved, including one revoked after the question was asked, is not a queue.
+approved, including one revoked after the question was asked, is not reported as
+spoken and is not a queue.
 
 **Admin: `/fleet/mcp`** (Bearer `FLEET_ADMIN_TOKEN`, another AI, or `scripts/fleet.sh`).
 From the command line, one tool per call, arguments as a JSON object:

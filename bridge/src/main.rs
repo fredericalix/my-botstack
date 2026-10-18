@@ -71,28 +71,41 @@ fn reply_timeout(raw: &str) -> anyhow::Result<u64> {
     Ok(seconds)
 }
 
-/// `GROK_BOT_WEBHOOK_URL`. Empty means Grok Bot is off. `https://` is the
-/// only scheme that keeps `GROK_BOT_WEBHOOK_TOKEN` off the wire in clear;
-/// `http://` is refused unless `allow_http` is set, for a local bridge.
-fn webhook_url(raw: &str, allow_http: bool) -> anyhow::Result<String> {
+/// A webhook URL the bridge will post to. `insecure` is the only signal that
+/// the scheme is `http://`: the start-up warning uses it and does not parse
+/// the string again.
+#[derive(Debug)]
+struct Webhook {
+    url: String,
+    insecure: bool,
+}
+
+/// `GROK_BOT_WEBHOOK_URL`. Empty means Grok Bot is off. `https://` with a
+/// host is the only form that keeps `GROK_BOT_WEBHOOK_TOKEN` off the wire in
+/// clear; `http://` is refused unless `allow_http` is set, for a local bridge.
+fn webhook_url(raw: &str, allow_http: bool) -> anyhow::Result<Webhook> {
     let url = raw.trim();
     if url.is_empty() {
-        return Ok(String::new());
+        return Ok(Webhook { url: String::new(), insecure: false });
     }
-    let scheme = url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("");
-    if scheme.eq_ignore_ascii_case("https") {
-        return Ok(url.to_string());
+    // `https:///hook` parses as host "hook". Refuse the empty-authority form
+    // so a half-edited URL does not start the bridge.
+    if url.contains(":///") {
+        bail!("GROK_BOT_WEBHOOK_URL must include a host");
     }
-    if scheme.eq_ignore_ascii_case("http") {
-        if allow_http {
-            return Ok(url.to_string());
-        }
-        bail!(
+    let parsed = reqwest::Url::parse(url).context("GROK_BOT_WEBHOOK_URL")?;
+    if parsed.host_str().unwrap_or("").is_empty() {
+        bail!("GROK_BOT_WEBHOOK_URL must include a host");
+    }
+    match parsed.scheme() {
+        "https" => Ok(Webhook { url: url.to_string(), insecure: false }),
+        "http" if allow_http => Ok(Webhook { url: url.to_string(), insecure: true }),
+        "http" => bail!(
             "GROK_BOT_WEBHOOK_URL must use https:// (the webhook key would travel in clear over http://). \
              Set GROK_BOT_WEBHOOK_ALLOW_HTTP to 1, true, or yes only for local development."
-        );
+        ),
+        _ => bail!("GROK_BOT_WEBHOOK_URL must be an https:// URL"),
     }
-    bail!("GROK_BOT_WEBHOOK_URL must be an https:// URL")
 }
 
 /// `KEYTERMS`: a comma-separated list; blanks are dropped.
@@ -181,16 +194,16 @@ async fn serve() -> anyhow::Result<()> {
     let api_key = env("XAI_API_KEY", "");
     let token = env("GROK_BRIDGE_TOKEN", "");
     let allow_insecure_webhook = env_flag("GROK_BOT_WEBHOOK_ALLOW_HTTP");
-    let webhook_url = webhook_url(&env("GROK_BOT_WEBHOOK_URL", ""), allow_insecure_webhook)?;
+    let webhook = webhook_url(&env("GROK_BOT_WEBHOOK_URL", ""), allow_insecure_webhook)?;
     let webhook_token = env("GROK_BOT_WEBHOOK_TOKEN", "");
     let reply_timeout_s = reply_timeout(&env(
         "GROK_BOT_REPLY_TIMEOUT",
         &grokbot::DEFAULT_REPLY_TIMEOUT_SECS.to_string(),
     ))?;
-    if webhook_url.to_ascii_lowercase().starts_with("http://") {
+    if webhook.insecure {
         warn!("GROK_BOT_WEBHOOK_URL is http://; the webhook key travels in clear. Use this only for local development.");
     }
-    if !webhook_url.is_empty() && webhook_token.is_empty() {
+    if !webhook.url.is_empty() && webhook_token.is_empty() {
         warn!("GROK_BOT_WEBHOOK_URL is set but GROK_BOT_WEBHOOK_TOKEN is empty: a Grok Bot routine rejects the post without its key");
     }
     let data = std::path::PathBuf::from(env("DATA_DIR", "/data"));
@@ -228,8 +241,8 @@ async fn serve() -> anyhow::Result<()> {
         bridge_token = !token.is_empty(),
         bootstrap_key = robot_token.len(),
         fleet_admin_token = !admin_token.is_empty(),
-        webhook = !webhook_url.is_empty(),
-        webhook_https = webhook_url.to_ascii_lowercase().starts_with("https://"),
+        webhook = !webhook.url.is_empty(),
+        webhook_https = !webhook.url.is_empty() && !webhook.insecure,
         webhook_token = !webhook_token.is_empty(),
         grok_reply_timeout_s = reply_timeout_s,
         devices = fleet.entries().len(),
@@ -257,7 +270,7 @@ async fn serve() -> anyhow::Result<()> {
     let grokbot = Arc::new(grokbot::GrokBot::new(
         grokbot::Config {
             token,
-            webhook_url,
+            webhook_url: webhook.url,
             webhook_token,
             fleet: fleet.clone(),
             default_device: device,
@@ -358,15 +371,24 @@ mod tests {
 
     #[test]
     fn an_http_webhook_is_refused_unless_local_development_opts_in() {
-        assert_eq!(webhook_url("", false).unwrap(), "");
-        assert_eq!(webhook_url("  ", true).unwrap(), "");
-        assert_eq!(webhook_url(" https://bot.example/hook ", false).unwrap(), "https://bot.example/hook");
-        assert!(webhook_url("HTTPS://bot.example/hook", false).is_ok());
+        let empty = webhook_url("", false).unwrap();
+        assert_eq!(empty.url, "");
+        assert!(!empty.insecure);
+        assert_eq!(webhook_url("  ", true).unwrap().url, "");
+        let https = webhook_url(" https://bot.example/hook ", false).unwrap();
+        assert_eq!(https.url, "https://bot.example/hook");
+        assert!(!https.insecure);
+        assert!(!webhook_url("HTTPS://bot.example/hook", false).unwrap().insecure);
         let refused = webhook_url("http://bot.example/hook", false).unwrap_err().to_string();
         assert!(refused.contains("https://") && refused.contains("GROK_BOT_WEBHOOK_ALLOW_HTTP"), "{refused}");
         assert!(webhook_url("http://127.0.0.1:9/hook", false).is_err());
-        assert_eq!(webhook_url("http://127.0.0.1:9/hook", true).unwrap(), "http://127.0.0.1:9/hook");
+        let local = webhook_url("http://127.0.0.1:9/hook", true).unwrap();
+        assert_eq!(local.url, "http://127.0.0.1:9/hook");
+        assert!(local.insecure);
         assert!(webhook_url("ftp://bot.example/hook", true).is_err());
+        for missing_host in ["https://", "https:///hook", "https://:443", "http://"] {
+            assert!(webhook_url(missing_host, true).is_err(), "{missing_host}");
+        }
     }
 
     #[test]

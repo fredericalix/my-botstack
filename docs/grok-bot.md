@@ -165,8 +165,8 @@ or `yes` allows it, for a local bridge only; the log then warns once.
 A Grok Bot agent can call `stackchan_say(text, device_id?)` at any time. `device_id` is a
 device name or a MAC; `stackchan_devices` lists the approved devices (name, MAC, type,
 online, locked, language, state, features). Without `device_id` the text goes to
-`GROK_DEVICE_ID` when that device is approved, or, when `GROK_DEVICE_ID` is unset, to
-the only approved device. Otherwise the answer is "unknown device"
+`GROK_DEVICE_ID` when that device is approved. It does not go to the only approved
+device. Otherwise the answer is "unknown device"
 ([fleet](fleet.md)). A device is always connected ([botstack/v1](protocol.md)), so
 an idle device speaks at once: the `notify` animation, a chime, the message (xAI TTS),
 then a short conversation listens for 10 s so you can answer. The message never cuts a
@@ -176,7 +176,9 @@ link goes back there too.
 
 ## Photo (C)
 
-A Grok Bot agent can call `stackchan_photo(device_id?)` to see through a device's camera. A
+A Grok Bot agent can call `stackchan_photo(device_id?)` to see through a device's camera.
+Without `device_id` the photo is taken on `GROK_DEVICE_ID` when that device is approved.
+A fleet with one approved device still needs that setting, or a `device_id`. A
 device without the `camera` feature is refused with a clear message. The
 bridge sends the robot `tool camera.take_photo`, the face opens its eyes wide, and the
 robot uploads one 320×240 JPEG to the vision URL as for its own photos. The `question`

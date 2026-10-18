@@ -74,8 +74,9 @@ fn apology(language: &str) -> &'static str {
 }
 
 /// Said when a Grok Bot routine accepts the question and then never calls
-/// `stackchan_reply`. The bridge's own line: if the link is already gone, it
-/// is dropped, not kept for the next connection.
+/// `stackchan_reply`. The bridge's own line: `keep` is false, so a drop
+/// during playback does not write it to `grok_pending.json`, and a link that
+/// is already gone drops it too.
 fn grok_bot_silent(language: &str) -> &'static str {
     say(language, "Grok Bot n'a pas répondu.", "Grok Bot didn't answer.")
 }
@@ -966,7 +967,7 @@ impl Link {
         tokio::spawn(async move {
             if let Err(reason) = grokbot.post_webhook(payload, &language).await {
                 grokbot.forget(&request_id);
-                let _ = commands.send(Command::Say { text: reason.to_string(), kind: Kind::Reply });
+                let _ = commands.send(Command::Say { text: reason.to_string(), kind: Kind::Reply, keep: false });
                 return;
             }
             tokio::time::sleep(timeout).await;
@@ -976,7 +977,7 @@ impl Link {
             let text = grok_bot_silent(&language).to_string();
             // The bridge's own apology. A closed link drops it: it is not one
             // of Grok Bot's messages, so it is not written to grok_pending.json.
-            let _ = commands.send(Command::Say { text, kind: Kind::Reply });
+            let _ = commands.send(Command::Say { text, kind: Kind::Reply, keep: false });
         });
         "The question was sent to Grok Bot. Tell them in a few words that you are asking it; \
          its answer will be read out later by itself."
@@ -994,17 +995,21 @@ impl Link {
             Command::Photo { key } if !self.approved => {
                 self.app.deliver_photo(&key, Err("The device is waiting for approval.".into()));
             }
-            // A Grok Bot answer: in the conversation if one is open, else right away.
-            Command::Say { text, kind: Kind::Reply } => {
-                if self.conversation.is_some() {
-                    self.speak_verbatim(vec![text], true, true);
+            // A Grok Bot answer: in the conversation if one is open, else right
+            // away. A bridge line (`keep: false`) is said now and not saved.
+            Command::Say { text, kind: Kind::Reply, keep } => {
+                if self.conversation.is_some() || !keep {
+                    self.speak_verbatim(vec![text], true, keep);
                 } else {
                     self.push(vec![text]);
                 }
             }
-            // A pushed message never cuts a conversation.
-            Command::Say { text, kind: Kind::Push } => {
-                if self.conversation.is_some() {
+            // A pushed message never cuts a conversation. `keep: false` is a
+            // bridge line: said now, not held for the next connection.
+            Command::Say { text, kind: Kind::Push, keep } => {
+                if !keep {
+                    self.speak_verbatim(vec![text], true, false);
+                } else if self.conversation.is_some() {
                     self.held_pushes.push(text);
                 } else {
                     self.push(vec![text]);
@@ -1377,8 +1382,9 @@ mod tests {
         let told = link.ask_grok_bot("what is on my calendar");
         assert!(told.contains("sent to Grok Bot"), "{told}");
         let command = tokio::time::timeout(Duration::from_secs(2), incoming.recv()).await.expect("silence").expect("channel");
-        let Command::Say { text, kind } = command else { panic!("expected the silence line") };
+        let Command::Say { text, kind, keep } = command else { panic!("expected the silence line") };
         assert_eq!(kind, Kind::Reply);
+        assert!(!keep);
         assert_eq!(text, "Grok Bot didn't answer.");
     }
 
@@ -1437,6 +1443,34 @@ mod tests {
         // Approved once: a second Approved changes nothing.
         link.command(Command::Approved);
         assert!(sent(&mut receiver).is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_bridge_line_is_not_requeued_when_playback_is_cut() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::testing::app(dir.path());
+        {
+            let (mut session, _receiver) = link(&app, MAC);
+            session.open_conversation(app.slots.try_take().unwrap(), None);
+            session.command(Command::Say {
+                text: "Grok Bot didn't answer.".into(),
+                kind: Kind::Reply,
+                keep: false,
+            });
+            assert!(session.unspoken.is_empty());
+            session.finish();
+            assert!(app.grokbot.take_pending(MAC).is_empty());
+        }
+        let (mut session, _receiver) = link(&app, MAC);
+        session.open_conversation(app.slots.try_take().unwrap(), None);
+        session.command(Command::Say {
+            text: "The deploy finished.".into(),
+            kind: Kind::Reply,
+            keep: true,
+        });
+        assert_eq!(session.unspoken, vec!["The deploy finished.".to_string()]);
+        session.finish();
+        assert_eq!(app.grokbot.take_pending(MAC), vec!["The deploy finished."]);
     }
 
     #[test]
